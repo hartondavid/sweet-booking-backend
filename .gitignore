@@ -8,3 +8,5 @@ node_modules/
 # Environment variables
 .env
 .test.env
+
+public/uploads/

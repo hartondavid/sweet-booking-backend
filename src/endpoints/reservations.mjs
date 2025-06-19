@@ -31,11 +31,17 @@ router.post('/addReservation', userAuthMiddleware, async (req, res) => {
             .first();
 
 
+
+
         if (!currentRemainingQuantity) {
             return sendJsonResponse(res, false, 404, "Nu există rezervări!", []);
         }
 
         const remainingQuantity = currentRemainingQuantity.remaining_quantity - quantity;
+
+        if (remainingQuantity <= 0) {
+            return sendJsonResponse(res, false, 404, "Nu există prajituri!", []);
+        }
 
         console.log('remainingQuantity', remainingQuantity);
         await db('remaining_cakes')

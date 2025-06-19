@@ -9,6 +9,8 @@ exports.up = function (knex) {
         table.integer('admin_id').unsigned().notNullable()
             .references('id').inTable('users').onDelete('CASCADE');
 
+        table.string('unit').nullable();
+
         table.timestamps(true, true);
     });
 };

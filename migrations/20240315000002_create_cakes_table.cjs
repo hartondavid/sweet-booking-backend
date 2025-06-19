@@ -18,6 +18,10 @@ exports.up = function (knex) {
 
         table.float('kcal', 8, 2).nullable();
 
+        table.integer('grams_per_piece').nullable();
+
+        table.float('price_per_kg', 8, 2).nullable();
+
         table.integer('admin_id').unsigned().notNullable()
             .references('id').inTable('users').onDelete('CASCADE');
 

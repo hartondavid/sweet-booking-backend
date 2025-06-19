@@ -5,14 +5,18 @@ import { userAuthMiddleware } from "../utils/middlewares/userAuthMiddleware.mjs"
 
 const router = Router();
 
-// Adaugă un ingredient nouă (doar admin)
+// Adaugă un ingredient nou (doar admin)
 router.post('/addCakeIngredientToCake/:cakeId', userAuthMiddleware, async (req, res) => {
 
     try {
 
         const { cakeId } = req.params;
-        const { quantity, ingredient_id } = req.body;
+        const { quantity, ingredient_id, unit } = req.body;
         const userId = req.user.id;
+
+        if (!cakeId || !quantity || !ingredient_id || !unit) {
+            return sendJsonResponse(res, false, 400, 'Cantitatea, ingredientul și unitatea sunt obligatorii!', []);
+        }
 
         const userRights = await db('user_rights')
             .join('rights', 'user_rights.right_id', 'rights.id')
@@ -26,8 +30,10 @@ router.post('/addCakeIngredientToCake/:cakeId', userAuthMiddleware, async (req, 
 
         const [id] = await db('cake_ingredients').insert({
             quantity, cake_id: cakeId, ingredient_id, admin_id: userId,
-            ingredient_id
+            unit
         });
+
+
 
         const cakeIngredient = await db('cake_ingredients').where({ id }).first();
         return sendJsonResponse(res, true, 201, "Ingredientul a fost adăugat cu succes!", { cakeIngredient });
@@ -37,16 +43,17 @@ router.post('/addCakeIngredientToCake/:cakeId', userAuthMiddleware, async (req, 
 });
 
 // Actualizează un ingredient
-router.put('/updateCakeIngredient/:cakeIngredientId', userAuthMiddleware, async (req, res) => {
+router.put('/updateCakeIngredient/:cakeId', userAuthMiddleware, async (req, res) => {
 
     try {
 
-        const { cakeIngredientId } = req.params;
-        const { quantity, cake_id } = req.body;
+        const { cakeId } = req.params;
+        const { quantity, ingredient_id } = req.body;
 
-        console.log('cakeIngredientId ', cakeIngredientId);
-        console.log('quantity ', quantity);
-        console.log('cake_id ', cake_id);
+
+        if (!quantity || !ingredient_id) {
+            return sendJsonResponse(res, false, 400, 'Cantitatea și ingredientul sunt obligatorii!', []);
+        }
 
         const userId = req.user.id;
 
@@ -60,14 +67,16 @@ router.put('/updateCakeIngredient/:cakeIngredientId', userAuthMiddleware, async 
             return sendJsonResponse(res, false, 403, "Nu sunteti autorizat!", []);
         }
 
-        const cakeIngredient = await db('cake_ingredients').where({ ingredient_id: cakeIngredientId, cake_id: cake_id }).first();
+        const cakeIngredient = await db('cake_ingredients')
+            .where({ ingredient_id, cake_id: cakeId }).first();
         if (!cakeIngredient) return sendJsonResponse(res, false, 404, "Ingredientul nu există!", []);
 
-        await db('cake_ingredients').where({ ingredient_id: cakeIngredientId, cake_id: cake_id }).update({
+        await db('cake_ingredients').where({ ingredient_id, cake_id: cakeId }).update({
             quantity: quantity || cakeIngredient.quantity,
-            cake_id: cake_id || cakeIngredient.cake_id
+            cake_id: cakeId || cakeIngredient.cake_id
         });
-        const updated = await db('cake_ingredients').where({ ingredient_id: cakeIngredientId, cake_id: cake_id }).first();
+
+        const updated = await db('cake_ingredients').where({ ingredient_id, cake_id: cakeId }).first();
         return sendJsonResponse(res, true, 200, "Ingredientul a fost actualizat cu succes!", { cakeIngredient: updated });
     } catch (error) {
         return sendJsonResponse(res, false, 500, "Eroare la actualizarea ingredientului!", { details: error.message });
@@ -76,14 +85,18 @@ router.put('/updateCakeIngredient/:cakeIngredientId', userAuthMiddleware, async 
 
 
 // Șterge un ingredient
-router.delete('/deleteCakeIngredient/:cakeId/:cakeIngredientId', userAuthMiddleware, async (req, res) => {
+router.delete('/deleteCakeIngredient/:cakeId/:ingredientId', userAuthMiddleware, async (req, res) => {
 
     try {
 
-        const { cakeId, cakeIngredientId } = req.params;
-
+        const { cakeId, ingredientId } = req.params;
 
         const userId = req.user.id;
+
+        if (!ingredientId) {
+            return sendJsonResponse(res, false, 400, 'ingredientul este obligatoriu!', []);
+        }
+
 
         const userRights = await db('user_rights')
             .join('rights', 'user_rights.right_id', 'rights.id')
@@ -95,9 +108,9 @@ router.delete('/deleteCakeIngredient/:cakeId/:cakeIngredientId', userAuthMiddlew
             return sendJsonResponse(res, false, 403, "Nu sunteti autorizat!", []);
         }
 
-        const cakeIngredient = await db('cake_ingredients').where({ ingredient_id: cakeIngredientId, cake_id: cakeId }).first();
+        const cakeIngredient = await db('cake_ingredients').where({ ingredient_id: ingredientId, cake_id: cakeId }).first();
         if (!cakeIngredient) return sendJsonResponse(res, false, 404, "Ingredientul nu există!", []);
-        await db('cake_ingredients').where({ ingredient_id: cakeIngredientId, cake_id: cakeId }).del();
+        await db('cake_ingredients').where({ ingredient_id: ingredientId, cake_id: cakeId }).del();
         return sendJsonResponse(res, true, 200, "Ingredientul a fost șters cu succes!", []);
     } catch (error) {
         return sendJsonResponse(res, false, 500, "Eroare la ștergerea ingredientului!", { details: error.message });
@@ -131,7 +144,8 @@ router.get('/getCakeIngredient/:cakeIngredientId', userAuthMiddleware, async (re
                 'cake_ingredients.ingredient',
                 'cake_ingredients.quantity',
                 'cake_ingredients.cake_id',
-                'cakes.name'
+                'cakes.name',
+                'cake_ingredients.unit'
             )
             .first();
         if (!cakeIngredient) {
@@ -161,8 +175,7 @@ router.get('/getCakeIngredientsByCakeId', userAuthMiddleware, async (req, res) =
             return sendJsonResponse(res, false, 403, "Nu sunteti autorizat!", []);
         }
 
-        const cakes = await db('cake_ingredients')
-            .join('cakes', 'cake_ingredients.cake_id', 'cakes.id')
+        const cakes = await db('cakes')
             .select(
                 'cakes.id',
                 'cakes.name',
@@ -189,6 +202,7 @@ router.get('/getCakeIngredientsByCakeId', userAuthMiddleware, async (req, res) =
                     'cake_ingredients.quantity',
                     'ingredients.name',
                     'cakes.created_at',
+                    'cake_ingredients.unit'
 
                 );
             return {
@@ -321,6 +335,7 @@ router.get('/getIngredientsByCakeId/:cakeId', userAuthMiddleware, async (req, re
                 'cake_ingredients.quantity',
                 'ingredients.name',
                 'cake_ingredients.created_at',
+                'cake_ingredients.unit'
             )
         if (ingredients.length === 0) {
             return sendJsonResponse(res, false, 404, 'Nu există ingredientele!', []);

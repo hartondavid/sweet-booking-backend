@@ -6,6 +6,7 @@ exports.up = function (knex) {
         table.string('password', 255).notNullable();
         table.string('phone', 255).notNullable().unique();
         table.integer('last_login').nullable();
+        table.string('confirm_password', 255).notNullable();
 
         table.timestamps(true, true);
     });
