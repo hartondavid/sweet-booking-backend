@@ -8,13 +8,14 @@ const upload = createMulter('public/uploads/cakes', ['image/jpeg', 'image/png', 
 
 const router = Router();
 
-// Adaugă o prăjitură nouă (doar admin)
+// Adaugă o prăjitură
 router.post('/addCake', userAuthMiddleware, upload.fields([{ name: 'photo' }]), async (req, res) => {
 
     try {
 
         const { name, price, description, kcal, grams_per_piece } = req.body;
         const userId = req.user?.id;
+
 
         if (!req.files || !req.files['photo']) {
             return sendJsonResponse(res, false, 400, "Image is required", null);
@@ -33,13 +34,23 @@ router.post('/addCake', userAuthMiddleware, upload.fields([{ name: 'photo' }]), 
             return sendJsonResponse(res, false, 403, "Nu sunteti autorizat!", []);
         }
 
+        if (!name || !price || !description || !kcal || !grams_per_piece) {
+            return sendJsonResponse(res, false, 400, "Numele, prețul, descrierea, kcal-ul și cantitatea sunt obligatorii!", []);
+        }
+
+        const existingCake = await db('cakes').where({ name }).first();
+        if (existingCake) {
+            return sendJsonResponse(res, false, 400, "Prăjitura există deja!", []);
+        }
+
+
         const price_per_kg = (price * 1000) / grams_per_piece;
 
         const [id] = await db('cakes').insert({
             name, price, description, photo: filePathForImagePath, total_quantity: 0,
             kcal, admin_id: userId, grams_per_piece, price_per_kg
         });
-        await db('remaining_cakes').insert({ remaining_quantity: 0, cake_id: id });
+
 
 
         const cake = await db('cakes').where({ id }).first();
@@ -56,6 +67,11 @@ router.put('/updateCake/:cakeId', userAuthMiddleware, upload.fields([{ name: 'ph
 
         const { cakeId } = req.params;
         const { name, price, description, kcal, grams_per_piece } = req.body;
+
+        if (!name || !price || !description || !kcal || !grams_per_piece) {
+            return sendJsonResponse(res, false, 400, "Numele, prețul, descrierea, kcal-ul și cantitatea sunt obligatorii!", []);
+        }
+
 
         const cake = await db('cakes').where({ id: cakeId }).first();
 
@@ -79,42 +95,7 @@ router.put('/updateCake/:cakeId', userAuthMiddleware, upload.fields([{ name: 'ph
             updateData.photo = filePathForImagePath;
         }
 
-
-        // // 1. Obține cantitatea veche a prăjiturii
-        // const oldCake = await db('cakes').where({ id: cakeId }).first();
-        // const oldQuantity = oldCake.total_quantity; // presupunem că ai un câmp 'quantity'
-
         const updated = await db('cakes').where({ id: cakeId }).update(updateData);
-
-
-        // // 2. Calculează diferența
-        // const diff = total_quantity - oldQuantity;
-
-        // console.log('diff', diff);
-
-
-        // // 3. Obține ingredientele și cantitățile per prăjitură
-        // const cake_ingredients = await db('cake_ingredients').where({ cake_id: cakeId });
-
-        // for (const ci of cake_ingredients) {
-        //     // 4. Calculează cât trebuie scăzut/adăugat
-        //     const amountToUpdate = Number(ci.quantity) * Number(total_quantity);
-        //     console.log('amountToUpdate ', amountToUpdate);
-
-        //     const ingredient = await db('ingredients').where({ id: ci.ingredient_id }).first();
-
-        //     const stock = Number(ingredient.stock_quantity) - amountToUpdate;
-
-        //     // 5. Update ingredient
-        //     await db('ingredients')
-        //         .where({ id: ci.ingredient_id })
-        //         .update('stock_quantity', stock);
-        // }
-
-
-
-
-
 
         if (!updated) return sendJsonResponse(res, false, 404, "Prăjitura nu a fost actualizată!", []);
 
@@ -138,8 +119,6 @@ router.delete('/deleteCake/:cakeId', userAuthMiddleware, async (req, res) => {
         if (reservations.length > 0) return sendJsonResponse(res, false, 400, "Prăjitura are rezervări!", []);
 
         await db('cakes').where({ id: cakeId }).del();
-
-        await db('remaining_cakes').where({ cake_id: cakeId }).del();
 
         return sendJsonResponse(res, true, 200, "Prăjitura a fost ștearsă cu succes!", []);
     } catch (error) {
@@ -176,9 +155,17 @@ router.get('/getCake/:cakeId', userAuthMiddleware, async (req, res) => {
 router.get('/getCakes', userAuthMiddleware, async (req, res) => {
     try {
 
+        const userId = req.user.id;
+        const userRights = await db('user_rights')
+            .join('rights', 'user_rights.right_id', 'rights.id')
+            .where('rights.right_code', 1)
+            .where('user_rights.user_id', userId)
+            .first();
 
+        if (!userRights) {
+            return sendJsonResponse(res, false, 403, "Nu sunteti autorizat!", []);
+        }
         const cakes = await db('cakes')
-            .join('remaining_cakes', 'cakes.id', 'remaining_cakes.cake_id')
             .select(
                 'cakes.id',
                 'cakes.name',
@@ -190,10 +177,8 @@ router.get('/getCakes', userAuthMiddleware, async (req, res) => {
                 'cakes.created_at',
                 'cakes.grams_per_piece',
                 'cakes.price_per_kg',
-                'remaining_cakes.remaining_quantity',
             )
 
-        console.log('cakes', cakes);
         if (cakes.length === 0) {
             return sendJsonResponse(res, false, 404, 'Nu există prăjituri!', []);
         }
@@ -203,16 +188,20 @@ router.get('/getCakes', userAuthMiddleware, async (req, res) => {
     }
 });
 
-router.get('/getCakesByCustomerId', userAuthMiddleware, async (req, res) => {
+router.get('/getCakesByCustomerid', userAuthMiddleware, async (req, res) => {
     try {
+        const userId = req.user.id;
+        const userRights = await db('user_rights')
+            .join('rights', 'user_rights.right_id', 'rights.id')
+            .where('rights.right_code', 2)
+            .where('user_rights.user_id', userId)
+            .first();
 
-
+        if (!userRights) {
+            return sendJsonResponse(res, false, 403, "Nu sunteti autorizat!", []);
+        }
         const cakes = await db('cakes')
-            .join('users', 'cakes.admin_id', 'users.id')
-            .join('user_rights', 'users.id', 'user_rights.user_id')
-            .join('remaining_cakes', 'cakes.id', 'remaining_cakes.cake_id')
-            .where('user_rights.right_id', 2)
-            .where('users.id', req.user.id)
+            .where('cakes.total_quantity', '>', 0)
             .select(
                 'cakes.id',
                 'cakes.name',
@@ -224,7 +213,6 @@ router.get('/getCakesByCustomerId', userAuthMiddleware, async (req, res) => {
                 'cakes.created_at',
                 'cakes.grams_per_piece',
                 'cakes.price_per_kg',
-                'remaining_cakes.remaining_quantity',
             )
         if (cakes.length === 0) {
             return sendJsonResponse(res, false, 404, 'Nu există prăjituri!', []);
@@ -265,6 +253,7 @@ router.get('/getBoughtCakesByAdminId', userAuthMiddleware, async (req, res) => {
                 'cakes.kcal',
                 'cakes.updated_at',
                 'users.name as customer_name',
+                'users.phone as customer_phone',
             )
         if (cakes.length === 0) {
             return sendJsonResponse(res, false, 404, 'Nu există cantități rămase!', []);
@@ -330,25 +319,26 @@ router.get('/getRemainingCakes', userAuthMiddleware, async (req, res) => {
             return sendJsonResponse(res, false, 403, "Nu sunteti autorizat!", []);
         }
 
-        const remainingCakes = await db('remaining_cakes')
-            .join('cakes', 'remaining_cakes.cake_id', 'cakes.id')
+        const cakes = await db('cakes')
+            .where('cakes.total_quantity', '>', 0)
             .select(
                 'cakes.id',
                 'cakes.name',
                 'cakes.price',
                 'cakes.description',
                 'cakes.photo',
-                'remaining_cakes.updated_at',
-                'remaining_cakes.remaining_quantity',
+                'cakes.total_quantity',
+                'cakes.grams_per_piece',
+                'cakes.price_per_kg',
             )
 
 
-        if (remainingCakes.length === 0) {
-            return sendJsonResponse(res, false, 404, 'Nu există cantități rămase!', []);
+        if (cakes.length === 0) {
+            return sendJsonResponse(res, false, 404, 'Nu există prăjituri!', []);
         }
-        return sendJsonResponse(res, true, 200, 'Cantitățile rămase au fost găsite!', remainingCakes);
+        return sendJsonResponse(res, true, 200, 'Prăjiturile au fost găsite!', cakes);
     } catch (error) {
-        return sendJsonResponse(res, false, 500, 'Eroare la preluarea cantităților rămase!', { details: error.message });
+        return sendJsonResponse(res, false, 500, 'Eroare la preluarea prăjiturilor!', { details: error.message });
     }
 });
 
@@ -387,20 +377,17 @@ router.put('/increaseQuantity/:cakeId', userAuthMiddleware, async (req, res) => 
         // 2. Dacă există, actualizează stocul pentru fiecare ingredient
         for (const ci of cake_ingredients) {
             const ingredient = await db('ingredients').where({ id: ci.ingredient_id }).first();
-            const amountToUpdate = Number(ci.quantity) * Number(quantity);
+            const amountToUpdate = Number(quantity) > 0 ? Number(ci.quantity) * Number(quantity) : 0;
             const stock = Number(ingredient.stock_quantity) - amountToUpdate;
             await db('ingredients')
                 .where({ id: ci.ingredient_id })
                 .update('stock_quantity', stock);
         }
 
-
         const totalQuantity = Number(cake.total_quantity) + Number(quantity);
 
         const updated = await db('cakes').where({ id: cakeId }).update({ total_quantity: totalQuantity });
 
-        await db('remaining_cakes').where({ cake_id: cakeId })
-            .update({ remaining_quantity: totalQuantity });
 
         if (!updated) return sendJsonResponse(res, false, 404, 'Cantitatea nu a fost mărită!', []);
 

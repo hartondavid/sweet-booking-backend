@@ -13,8 +13,6 @@ exports.up = function (knex) {
         table.integer('ingredient_id').unsigned().notNullable()
             .references('id').inTable('ingredients').onDelete('CASCADE');
 
-        table.string('unit').nullable();
-
         table.timestamps(true, true);
     });
 };

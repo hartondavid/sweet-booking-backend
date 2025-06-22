@@ -15,4 +15,3 @@ export function md5Hash(password) { return crypto.createHash('md5').update(passw
 export function sendJsonResponse(res, success, status, message, data) {
     res.status(status).json({ success: success, message: message, data: data });
 }
-

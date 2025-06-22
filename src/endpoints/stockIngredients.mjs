@@ -6,7 +6,7 @@ import { userAuthMiddleware } from "../utils/middlewares/userAuthMiddleware.mjs"
 const router = Router();
 
 
-// Adaugă un ingredient necesar nouă (doar admin)
+// Adaugă un ingredient necesar
 router.post('/addStockIngredient', userAuthMiddleware, async (req, res) => {
 
     try {
@@ -14,6 +14,10 @@ router.post('/addStockIngredient', userAuthMiddleware, async (req, res) => {
         const { name, unit } = req.body;
 
         const userId = req.user.id;
+
+        if (!name || !unit) {
+            return sendJsonResponse(res, false, 400, "Numele și unitatea sunt obligatorii!", []);
+        }
 
         const userRights = await db('user_rights')
             .join('rights', 'user_rights.right_id', 'rights.id')
@@ -27,6 +31,11 @@ router.post('/addStockIngredient', userAuthMiddleware, async (req, res) => {
 
         if (!name || !unit) {
             return sendJsonResponse(res, false, 400, "Numele și unitatea sunt obligatorii!", []);
+        }
+
+        const existingIngredient = await db('ingredients').where({ name }).first();
+        if (existingIngredient) {
+            return sendJsonResponse(res, false, 400, "Ingredientul există deja!", []);
         }
 
         const [id] = await db('ingredients').insert({ name, stock_quantity: 0, unit, admin_id: userId });
@@ -46,9 +55,8 @@ router.put('/updateStockIngredient/:stockIngredientId', userAuthMiddleware, asyn
         const { name, stock_quantity, unit } = req.body;
         const userId = req.user.id;
 
-
-        if (!name || !unit) {
-            return sendJsonResponse(res, false, 400, "Numele și unitatea sunt obligatorii!", []);
+        if (!name && !stock_quantity && !unit) {
+            return sendJsonResponse(res, false, 400, "Numele, cantitatea și unitatea sunt obligatorii!", []);
         }
 
         const userRights = await db('user_rights')
@@ -159,14 +167,7 @@ router.get('/getStockIngredients', userAuthMiddleware, async (req, res) => {
         }
 
         const ingredients = await db('ingredients')
-            // .join('cake_ingredients', 'ingredients.id', 'cake_ingredients.ingredient_id')
-
             .select('*')
-        // .groupBy('ingredients.id')
-
-        console.log('ingredients', ingredients);
-
-
 
         if (!ingredients) {
             return sendJsonResponse(res, false, 404, 'Ingredientul nu există!', []);
@@ -202,10 +203,6 @@ router.get('/getIngredientsWhereNotInCake/:cakeId', userAuthMiddleware, async (r
             .whereNotIn('ingredients.id', db('cake_ingredients').select('ingredient_id').where('cake_id', cakeId))
             .select('*')
 
-        console.log('ingredients', ingredients);
-
-
-
         if (!ingredients) {
             return sendJsonResponse(res, false, 404, 'Ingredientul nu există!', []);
         }
@@ -233,12 +230,8 @@ router.get('/getIngredientsWhereInCake/:cakeId', userAuthMiddleware, async (req,
         }
 
         const ingredients = await db('ingredients')
-
             .whereIn('ingredients.id', db('cake_ingredients').select('ingredient_id').where('cake_id', cakeId))
             .select('*')
-
-        console.log('ingredients', ingredients);
-
 
 
         if (!ingredients) {
@@ -278,7 +271,6 @@ router.post('/increaseQuantity/:ingredientId', userAuthMiddleware, async (req, r
 
         const totalQuantity = Number(ingredients.stock_quantity) + Number(quantity);
 
-        console.log('totalQuantity', totalQuantity);
         const updated = await db('ingredients').where({ id: ingredientId }).update({ stock_quantity: totalQuantity });
         return sendJsonResponse(res, true, 201, "Ingredientul a fost adăugat cu succes!", { ingredients });
     } catch (error) {

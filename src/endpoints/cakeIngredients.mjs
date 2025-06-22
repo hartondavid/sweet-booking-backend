@@ -5,18 +5,19 @@ import { userAuthMiddleware } from "../utils/middlewares/userAuthMiddleware.mjs"
 
 const router = Router();
 
-// Adaugă un ingredient nou (doar admin)
+// Adaugă un ingredient 
 router.post('/addCakeIngredientToCake/:cakeId', userAuthMiddleware, async (req, res) => {
 
     try {
 
         const { cakeId } = req.params;
-        const { quantity, ingredient_id, unit } = req.body;
+        const { quantity, ingredient_id } = req.body;
         const userId = req.user.id;
 
-        if (!cakeId || !quantity || !ingredient_id || !unit) {
-            return sendJsonResponse(res, false, 400, 'Cantitatea, ingredientul și unitatea sunt obligatorii!', []);
+        if (!quantity || !ingredient_id) {
+            return sendJsonResponse(res, false, 400, 'Cantitatea și ingredientul sunt obligatorii!', []);
         }
+
 
         const userRights = await db('user_rights')
             .join('rights', 'user_rights.right_id', 'rights.id')
@@ -29,11 +30,8 @@ router.post('/addCakeIngredientToCake/:cakeId', userAuthMiddleware, async (req, 
         }
 
         const [id] = await db('cake_ingredients').insert({
-            quantity, cake_id: cakeId, ingredient_id, admin_id: userId,
-            unit
+            quantity, cake_id: cakeId, ingredient_id, admin_id: userId
         });
-
-
 
         const cakeIngredient = await db('cake_ingredients').where({ id }).first();
         return sendJsonResponse(res, true, 201, "Ingredientul a fost adăugat cu succes!", { cakeIngredient });
@@ -145,7 +143,7 @@ router.get('/getCakeIngredient/:cakeIngredientId', userAuthMiddleware, async (re
                 'cake_ingredients.quantity',
                 'cake_ingredients.cake_id',
                 'cakes.name',
-                'cake_ingredients.unit'
+                'ingredients.unit'
             )
             .first();
         if (!cakeIngredient) {
@@ -202,7 +200,7 @@ router.get('/getCakeIngredientsByCakeId', userAuthMiddleware, async (req, res) =
                     'cake_ingredients.quantity',
                     'ingredients.name',
                     'cakes.created_at',
-                    'cake_ingredients.unit'
+                    'ingredients.unit'
 
                 );
             return {
@@ -222,94 +220,6 @@ router.get('/getCakeIngredientsByCakeId', userAuthMiddleware, async (req, res) =
     }
 });
 
-
-// router.get('/searchCake', userAuthMiddleware, async (req, res) => {
-
-//     try {
-
-//         const { searchField } = req.query;
-
-//         if (!searchField) {
-//             return sendJsonResponse(res, false, 400, 'Search field is required', null);
-//         }
-
-//         const userId = req.user.id;
-
-//         const userRights = await db('user_rights')
-//             .join('rights', 'user_rights.right_id', 'rights.id')
-//             .where('rights.right_code', 1)
-//             .where('user_rights.user_id', userId)
-//             .first();
-
-//         if (!userRights) {
-//             return sendJsonResponse(res, false, 403, "Nu sunteti autorizat!", []);
-//         }
-
-
-//         // Query the database to search for employees where name contains the searchField
-//         const cakes = await db('cakes')
-//             .where(function () {
-//                 this.where('cakes.name', 'like', `%${searchField}%`)
-//                     .orWhere('cakes.description', 'like', `%${searchField}%`)
-//             })
-//             .select('cakes.*');
-
-
-//         if (cakes.length === 0) {
-//             return sendJsonResponse(res, false, 404, 'Nu există prajituri!', []);
-//         }
-
-//         // Attach the employees to the request object for the next middleware or route handler
-//         return sendJsonResponse(res, true, 200, 'Prajiturile au fost găsiți!', cakes);
-//     } catch (err) {
-//         console.error(err);
-//         return sendJsonResponse(res, false, 500, 'An error occurred while retrieving cakes', null);
-//     }
-// })
-
-
-// router.get('/searchStockIngredient', userAuthMiddleware, async (req, res) => {
-
-//     try {
-
-//         const { searchField } = req.query;
-
-//         if (!searchField) {
-//             return sendJsonResponse(res, false, 400, 'Search field is required', null);
-//         }
-
-//         const userId = req.user.id;
-
-//         const userRights = await db('user_rights')
-//             .join('rights', 'user_rights.right_id', 'rights.id')
-//             .where('rights.right_code', 1)
-//             .where('user_rights.user_id', userId)
-//             .first();
-
-//         if (!userRights) {
-//             return sendJsonResponse(res, false, 403, "Nu sunteti autorizat!", []);
-//         }
-
-
-//         // Query the database to search for employees where name contains the searchField
-//         const cakeIngredients = await db('ingredients')
-//             .where(function () {
-//                 this.where('ingredients.name', 'like', `%${searchField}%`)
-//             })
-//             .select('ingredients.*');
-
-
-//         if (cakeIngredients.length === 0) {
-//             return sendJsonResponse(res, false, 404, 'Nu există ingredientele!', []);
-//         }
-
-//         // Attach the employees to the request object for the next middleware or route handler
-//         return sendJsonResponse(res, true, 200, 'Ingredientele au fost găsite!', cakeIngredients);
-//     } catch (err) {
-//         console.error(err);
-//         return sendJsonResponse(res, false, 500, 'An error occurred while retrieving cake ingredients', null);
-//     }
-// })
 router.get('/getIngredientsByCakeId/:cakeId', userAuthMiddleware, async (req, res) => {
     try {
         const { cakeId } = req.params;

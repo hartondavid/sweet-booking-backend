@@ -6,8 +6,6 @@ exports.up = function (knex) {
 
         table.string('description').nullable();
 
-        table.integer('available_quantity').nullable();
-
         table.integer('total_quantity').nullable();
 
         table.float('price', 8, 2).nullable();

@@ -6,7 +6,7 @@ exports.up = function (knex) {
 
         table.string('date').nullable();
 
-        table.enum('status', ['placed', 'cancelled', 'picked up']).nullable();
+        table.enum('status', ['placed', 'cancelled', 'picked_up']).nullable();
 
 
         table.integer('cake_id').unsigned().notNullable()

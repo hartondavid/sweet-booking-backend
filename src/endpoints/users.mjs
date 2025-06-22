@@ -61,7 +61,9 @@ router.post('/register', async (req, res) => {
             confirm_password
         } = req.body;
 
-
+        if (password.length < 6) {
+            return sendJsonResponse(res, false, 400, "Parola trebuie sa aiba minim 6 caractere", null);
+        }
 
         // Fields that are allowed to be added for a new user
         const validFields = [
@@ -76,7 +78,6 @@ router.post('/register', async (req, res) => {
             }
         }
 
-        console.log('userData', userData);
 
         // Ensure required fields are present
         if (!userData.name || !userData.email || !userData.password || !userData.phone || !userData.confirm_password) {
@@ -86,8 +87,9 @@ router.post('/register', async (req, res) => {
             return sendJsonResponse(res, false, 400, "Parolele nu coincid!", []);
         }
 
-        if (userData.phone.length !== 10) {
-            return sendJsonResponse(res, false, 400, "Numarul de telefon trebuie sa aiba 10 cifre", null);
+        const phoneRegex = /^07[0-9]{8}$/;
+        if (!phoneRegex.test(userData.phone)) {
+            return sendJsonResponse(res, false, 400, "Numărul de telefon trebuie să înceapă cu 07 și să aibă 10 cifre.", null);
         }
 
 
@@ -95,13 +97,12 @@ router.post('/register', async (req, res) => {
             return sendJsonResponse(res, false, 400, "Numele trebuie sa aiba minim 3 caractere", null);
         }
 
-        if (userData.email.length < 3) {
-            return sendJsonResponse(res, false, 400, "Emailul trebuie sa aiba minim 3 caractere", null);
+        const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+        if (!emailRegex.test(userData.email)) {
+            return sendJsonResponse(res, false, 400, "Emailul nu este valid", null);
         }
 
-        if (userData.password.length < 6) {
-            return sendJsonResponse(res, false, 400, "Parola trebuie sa aiba minim 6 caractere", null);
-        }
+
 
         let newUserId;
         // let rightCode;
@@ -170,6 +171,10 @@ router.post('/addUser', userAuthMiddleware, async (req, res) => {
             confirm_password
         } = req.body;
 
+        if (password.length < 6) {
+            return sendJsonResponse(res, false, 400, "Parola trebuie sa aiba minim 6 caractere", null);
+        }
+
         const userId = req.user.id;
 
         const userRights = await db('user_rights')
@@ -195,18 +200,18 @@ router.post('/addUser', userAuthMiddleware, async (req, res) => {
             }
         }
 
-        console.log('userData', userData);
 
         // Ensure required fields are present
         if (!userData.name || !userData.email || !userData.password || !userData.phone || !userData.confirm_password) {
-            return sendJsonResponse(res, false, 400, "Missing required fields", null);
+            return sendJsonResponse(res, false, 400, "Numele, emailul, parola, numarul de telefon si confirmarea parolei sunt obligatorii!", null);
         }
         if (userData.password !== userData.confirm_password) {
             return sendJsonResponse(res, false, 400, "Parolele nu coincid!", []);
         }
 
-        if (userData.phone.length !== 10) {
-            return sendJsonResponse(res, false, 400, "Numarul de telefon trebuie sa aiba 10 cifre", null);
+        const phoneRegex = /^07[0-9]{8}$/;
+        if (!phoneRegex.test(userData.phone)) {
+            return sendJsonResponse(res, false, 400, "Numărul de telefon trebuie să înceapă cu 07 și să aibă 10 cifre.", null);
         }
 
 
@@ -218,8 +223,9 @@ router.post('/addUser', userAuthMiddleware, async (req, res) => {
             return sendJsonResponse(res, false, 400, "Emailul trebuie sa aiba minim 3 caractere", null);
         }
 
-        if (userData.password.length < 6) {
-            return sendJsonResponse(res, false, 400, "Parola trebuie sa aiba minim 6 caractere", null);
+        const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+        if (!emailRegex.test(userData.email)) {
+            return sendJsonResponse(res, false, 400, "Emailul nu este valid", null);
         }
 
         let newUserId;
@@ -232,8 +238,6 @@ router.post('/addUser', userAuthMiddleware, async (req, res) => {
                 .returning('id');
 
             const rightCode = await db('rights').where('right_code', 1).first();
-
-            console.log('rightCode', rightCode);
 
             await db('user_rights')
 
@@ -275,9 +279,8 @@ router.get('/getUsers', userAuthMiddleware, async (req, res) => {
             join('user_rights', 'users.id', 'user_rights.user_id')
             .join('rights', 'user_rights.right_id', 'rights.id')
             .whereNot('users.id', userId)
+            .where('rights.right_code', 1)
             .select('users.*', 'rights.name as right_name');
-
-        console.log('users', users);
 
 
         if (!users) {
@@ -289,11 +292,4 @@ router.get('/getUsers', userAuthMiddleware, async (req, res) => {
     }
 });
 
-
-
 export default router;
-
-
-
-
-
