@@ -219,7 +219,7 @@ router.get('/getReservationsByCustomerId', userAuthMiddleware, async (req, res) 
             .where('reservations.customer_id', userId)
             .whereNot('reservations.status', 'picked_up')
             .select(
-                'cakes.id',
+                'reservations.id',
                 'cakes.name',
                 'cakes.price',
                 'cakes.description',
@@ -230,6 +230,7 @@ router.get('/getReservationsByCustomerId', userAuthMiddleware, async (req, res) 
                 'reservations.status',
                 'reservations.updated_at',
                 'users.name as customer_name',
+
             )
             .orderBy('reservations.updated_at', 'desc')
         if (reservations.length === 0) {

@@ -102,6 +102,11 @@ router.post('/register', async (req, res) => {
             return sendJsonResponse(res, false, 400, "Emailul nu este valid", null);
         }
 
+        const phoneExists = await db('users').where('phone', userData.phone).first();
+        if (phoneExists) {
+            return sendJsonResponse(res, false, 400, "Numărul de telefon este deja înregistrat", null);
+        }
+
 
 
         let newUserId;
