@@ -4,8 +4,8 @@
   "description": "CREATE TABLE:\r npx knex migrate:make alter_file_name_table --knexfile knexfile.cjs\r RUN MIGRATIONS:\r npx knex migrate:latest --knexfile knexfile.cjs\r ROLLBACK:\r npx knex migrate:rollback --knexfile knexfile.cjs\r ALTER:\r npx knex migrate:make rename_file_name --knexfile knexfile.cjs\r create seed:\r npx knex seed:make file_name_seed\r run seed:\r npx knex seed:run --knexfile knexfile.cjs\r specific seed\r npx knex seed:run --specific=file_name_seed.cjs --knexfile knexfile.cjs",
   "main": "index.mjs",
   "scripts": {
-    "start": "node index.mjs",
-    "dev": "nodemon index.mjs",
+    "start": "node server.mjs",
+    "dev": "nodemon server.mjs",
     "build": "echo 'Backend build completed - no compilation needed'",
     "migrate": "knex migrate:latest --knexfile knexfile.cjs",
     "seed": "knex seed:run --knexfile knexfile.cjs",
