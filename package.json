@@ -5,7 +5,11 @@
   "main": "server.js",
   "scripts": {
     "start": "node index.mjs",
-    "dev": "nodemon index.mjs"
+    "dev": "nodemon index.mjs",
+    "build": "echo 'Backend build completed - no compilation needed'",
+    "migrate": "knex migrate:latest --knexfile knexfile.cjs",
+    "seed": "knex seed:run --knexfile knexfile.cjs",
+    "deploy": "npm start"
   },
   "repository": {
     "type": "git",
