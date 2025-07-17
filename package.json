@@ -2,7 +2,7 @@
   "name": "sweet-booking-backend",
   "version": "1.0.0",
   "description": "CREATE TABLE:\r npx knex migrate:make alter_file_name_table --knexfile knexfile.cjs\r RUN MIGRATIONS:\r npx knex migrate:latest --knexfile knexfile.cjs\r ROLLBACK:\r npx knex migrate:rollback --knexfile knexfile.cjs\r ALTER:\r npx knex migrate:make rename_file_name --knexfile knexfile.cjs\r create seed:\r npx knex seed:make file_name_seed\r run seed:\r npx knex seed:run --knexfile knexfile.cjs\r specific seed\r npx knex seed:run --specific=file_name_seed.cjs --knexfile knexfile.cjs",
-  "main": "server.js",
+  "main": "index.mjs",
   "scripts": {
     "start": "node index.mjs",
     "dev": "nodemon index.mjs",
@@ -24,7 +24,7 @@
   "dependencies": {
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
-    "express": "^5.1.0",
+    "express": "^4.18.2",
     "jsonwebtoken": "^9.0.2",
     "knex": "^3.1.0",
     "multer": "^2.0.1",
