@@ -476,6 +476,26 @@ app.get('/run-seeds', async (req, res) => {
     }
 });
 
+// Debug headers endpoint (not protected)
+app.get('/debug-headers', (req, res) => {
+    console.log('🔍 Debug headers request received');
+    console.log('📋 All headers:', req.headers);
+    console.log('🔐 Authorization header:', req.headers.authorization);
+    console.log('🌐 Origin:', req.headers.origin);
+    console.log('📱 User-Agent:', req.headers['user-agent']);
+
+    res.json({
+        success: true,
+        message: "Headers debug info",
+        data: {
+            authorization: req.headers.authorization,
+            origin: req.headers.origin,
+            userAgent: req.headers['user-agent'],
+            allHeaders: req.headers
+        }
+    });
+});
+
 // Test token endpoint (not protected)
 app.post('/test-token', async (req, res) => {
     try {
@@ -657,6 +677,7 @@ app.use('*', (req, res) => {
             runMigrations: '/run-migrations',
             runSeeds: '/run-seeds',
             testToken: '/test-token',
+            debugHeaders: '/debug-headers',
             login: '/login',
             api: apiRoutes ? '/api/*' : 'not available (simplified version)'
         }
