@@ -11,6 +11,48 @@ if (!supabaseUrl || !supabaseKey) {
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 /**
+ * Create bucket if it doesn't exist
+ * @param {string} bucketName - The bucket name
+ * @returns {Promise<boolean>}
+ */
+const ensureBucketExists = async (bucketName) => {
+    try {
+        // Try to get bucket info
+        const { data: buckets, error } = await supabase.storage.listBuckets();
+
+        if (error) {
+            console.error('❌ Error listing buckets:', error);
+            return false;
+        }
+
+        const bucketExists = buckets.some(bucket => bucket.name === bucketName);
+
+        if (!bucketExists) {
+            console.log(`📦 Creating bucket: ${bucketName}`);
+            const { error: createError } = await supabase.storage.createBucket(bucketName, {
+                public: true,
+                allowedMimeTypes: ['image/jpeg', 'image/png', 'image/gif', 'application/pdf'],
+                fileSizeLimit: 5242880 // 5MB
+            });
+
+            if (createError) {
+                console.error('❌ Error creating bucket:', createError);
+                return false;
+            }
+
+            console.log(`✅ Bucket created: ${bucketName}`);
+        } else {
+            console.log(`✅ Bucket exists: ${bucketName}`);
+        }
+
+        return true;
+    } catch (error) {
+        console.error('❌ Error ensuring bucket exists:', error);
+        return false;
+    }
+};
+
+/**
  * Upload a file to Supabase Storage
  * @param {Buffer} fileBuffer - The file buffer
  * @param {string} fileName - The file name
@@ -21,6 +63,12 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 export const uploadFile = async (fileBuffer, fileName, bucketName = 'cakes', folder = 'uploads') => {
     try {
         console.log('📤 Uploading file to Supabase Storage:', fileName);
+
+        // Ensure bucket exists
+        const bucketExists = await ensureBucketExists(bucketName);
+        if (!bucketExists) {
+            return { url: null, path: null, error: `Could not create or access bucket: ${bucketName}` };
+        }
 
         const filePath = `${folder}/${Date.now()}_${fileName}`;
 
