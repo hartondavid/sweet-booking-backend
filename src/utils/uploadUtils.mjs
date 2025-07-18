@@ -5,9 +5,23 @@ import fs from 'fs';
 // Function to create multer storage with a dynamic destination
 const createStorage = (uploadPath) => multer.diskStorage({
     destination: function (req, file, cb) {
-        // Create the folder if it doesn't exist
-        fs.mkdirSync(uploadPath, { recursive: true });
-        cb(null, uploadPath);
+        // Use /tmp directory for Vercel serverless environment
+        const isVercel = process.env.VERCEL || process.env.NODE_ENV === 'production';
+        const basePath = isVercel ? '/tmp' : process.cwd();
+        const fullPath = path.join(basePath, uploadPath);
+
+        try {
+            // Create the folder if it doesn't exist
+            fs.mkdirSync(fullPath, { recursive: true });
+            console.log('Created upload directory:', fullPath);
+            cb(null, fullPath);
+        } catch (error) {
+            console.error('Error creating upload directory:', error);
+            // Fallback to /tmp if there's an error
+            const fallbackPath = path.join('/tmp', path.basename(uploadPath));
+            fs.mkdirSync(fallbackPath, { recursive: true });
+            cb(null, fallbackPath);
+        }
     },
     filename: function (req, file, cb) {
         cb(null, `${Date.now()}_${file.originalname}`);
@@ -21,7 +35,7 @@ const createFileFilter = (allowedMimeTypes) => (req, file, cb) => {
         originalname: file.originalname,
         mimetype: file.mimetype
     });
-    
+
     if (allowedMimeTypes.includes(file.mimetype)) {
         console.log('File type accepted:', file.mimetype);
         cb(null, true);
@@ -37,7 +51,7 @@ const createMulter = (destinationPath, allowedMimeTypes) => {
         destinationPath,
         allowedMimeTypes
     });
-    
+
     return multer({
         storage: createStorage(destinationPath),
         fileFilter: createFileFilter(allowedMimeTypes),

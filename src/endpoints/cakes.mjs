@@ -1,10 +1,11 @@
 import { Router } from "express";
+import path from "path";
 import db from "../utils/database.mjs";
 import { sendJsonResponse } from "../utils/utilFunctions.mjs";
 import { userAuthMiddleware } from "../utils/middlewares/userAuthMiddleware.mjs";
 import createMulter from "../utils/uploadUtils.mjs";
 
-const upload = createMulter('public/uploads/cakes', ['image/jpeg', 'image/png', 'image/gif', 'application/pdf']);
+const upload = createMulter('uploads/cakes', ['image/jpeg', 'image/png', 'image/gif', 'application/pdf']);
 
 const router = Router();
 
@@ -22,7 +23,8 @@ router.post('/addCake', userAuthMiddleware, upload.fields([{ name: 'photo' }]), 
         }
 
         let filePathForImagePath = req.files['photo'][0].path; // Get the full file path
-        filePathForImagePath = filePathForImagePath.replace(/^public[\\/]/, '');
+        // Extract just the filename for storage in database
+        filePathForImagePath = path.basename(filePathForImagePath);
 
         const userRights = await (await db())('user_rights')
             .join('rights', 'user_rights.right_id', 'rights.id')
@@ -91,7 +93,8 @@ router.put('/updateCake/:cakeId', userAuthMiddleware, upload.fields([{ name: 'ph
 
         if (req.files && req.files['photo'] && req.files['photo'][0]) {
             let filePathForImagePath = req.files['photo'][0].path;
-            filePathForImagePath = filePathForImagePath.replace(/^public[\\/]/, '');
+            // Extract just the filename for storage in database
+            filePathForImagePath = path.basename(filePathForImagePath);
             updateData.photo = filePathForImagePath;
         }
 
