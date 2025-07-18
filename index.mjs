@@ -3,7 +3,7 @@
 import express from "express"
 import dotenv from 'dotenv'
 import cors from 'cors'
-import databaseManager from './src/utils/database.mjs'
+import { databaseManager } from './src/utils/database.mjs'
 import corsOptions from './middleware.js'
 
 const app = express();
