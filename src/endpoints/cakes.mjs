@@ -1,9 +1,11 @@
 import { Router } from "express";
 import path from "path";
+import fs from "fs";
 import db from "../utils/database.mjs";
 import { sendJsonResponse } from "../utils/utilFunctions.mjs";
 import { userAuthMiddleware } from "../utils/middlewares/userAuthMiddleware.mjs";
 import createMulter from "../utils/uploadUtils.mjs";
+import { uploadFile, deleteFile } from "../utils/supabaseStorage.mjs";
 
 const upload = createMulter('uploads/cakes', ['image/jpeg', 'image/png', 'image/gif', 'application/pdf']);
 
@@ -29,12 +31,24 @@ router.post('/addCake', userAuthMiddleware, upload.fields([{ name: 'photo' }]), 
 
         console.log('✅ Photo file received:', req.files['photo'][0]);
 
-        let filePathForImagePath = req.files['photo'][0].path; // Get the full file path
-        console.log('📂 Original file path:', filePathForImagePath);
+        // Read file buffer for Supabase upload
+        const fileBuffer = fs.readFileSync(req.files['photo'][0].path);
+        const fileName = req.files['photo'][0].originalname;
+        console.log('📄 File name:', fileName);
 
-        // Extract just the filename for storage in database
-        filePathForImagePath = path.basename(filePathForImagePath);
-        console.log('📄 Filename for database:', filePathForImagePath);
+        // Upload to Supabase Storage
+        console.log('📤 Uploading to Supabase Storage...');
+        const uploadResult = await uploadFile(fileBuffer, fileName, 'cakes', 'uploads');
+
+        if (uploadResult.error) {
+            console.error('❌ Upload failed:', uploadResult.error);
+            return sendJsonResponse(res, false, 500, "Eroare la upload-ul imaginii!", { details: uploadResult.error });
+        }
+
+        console.log('✅ Upload successful, URL:', uploadResult.url);
+
+        // Store the Supabase URL in database
+        const imageUrl = uploadResult.url;
 
         console.log('🔍 Checking user rights...');
         const userRights = await (await db())('user_rights')
@@ -73,7 +87,7 @@ router.post('/addCake', userAuthMiddleware, upload.fields([{ name: 'photo' }]), 
 
         console.log('💾 Inserting cake into database...');
         const [newCake] = await (await db())('cakes').insert({
-            name, price, description, photo: filePathForImagePath, total_quantity: 0,
+            name, price, description, photo: imageUrl, total_quantity: 0,
             kcal, admin_id: userId, grams_per_piece, price_per_kg
         }).returning('id');
 
@@ -120,10 +134,22 @@ router.put('/updateCake/:cakeId', userAuthMiddleware, upload.fields([{ name: 'ph
         }
 
         if (req.files && req.files['photo'] && req.files['photo'][0]) {
-            let filePathForImagePath = req.files['photo'][0].path;
-            // Extract just the filename for storage in database
-            filePathForImagePath = path.basename(filePathForImagePath);
-            updateData.photo = filePathForImagePath;
+            console.log('📤 Uploading new photo to Supabase Storage...');
+
+            // Read file buffer for Supabase upload
+            const fileBuffer = fs.readFileSync(req.files['photo'][0].path);
+            const fileName = req.files['photo'][0].originalname;
+
+            // Upload to Supabase Storage
+            const uploadResult = await uploadFile(fileBuffer, fileName, 'cakes', 'uploads');
+
+            if (uploadResult.error) {
+                console.error('❌ Upload failed:', uploadResult.error);
+                return sendJsonResponse(res, false, 500, "Eroare la upload-ul imaginii!", { details: uploadResult.error });
+            }
+
+            console.log('✅ New photo uploaded successfully, URL:', uploadResult.url);
+            updateData.photo = uploadResult.url;
         }
 
         const updated = await (await db())('cakes').where({ id: cakeId }).update(updateData);
