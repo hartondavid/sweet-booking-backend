@@ -32,13 +32,10 @@ class DatabaseManager {
 
                 // Check if database exists
                 try {
-                    const databases = await this.knex.raw('SHOW DATABASES');
-                    console.log('📋 Available databases:', databases[0].map(db => db.Database));
-
-                    const currentDb = await this.knex.raw('SELECT DATABASE() as current_db');
-                    console.log('🎯 Current database:', currentDb[0][0].current_db);
+                    const currentDb = await this.knex.raw('SELECT current_database() as current_db');
+                    console.log('🎯 Current database:', currentDb.rows[0].current_db);
                 } catch (dbError) {
-                    console.log('⚠️ Could not check databases:', dbError.message);
+                    console.log('⚠️ Could not check database:', dbError.message);
                 }
             }
             return this.knex;

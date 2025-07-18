@@ -269,6 +269,40 @@ app.get('/test-db', async (req, res) => {
     }
 });
 
+// Manual migration endpoint (not protected) - for emergency use
+app.post('/run-migrations', async (req, res) => {
+    try {
+        console.log('🔄 Manually running migrations...');
+
+        // Run migrations
+        await databaseManager.runMigrations();
+        console.log('✅ Manual migrations completed successfully');
+
+        // Check tables after migrations
+        const knex = await databaseManager.getKnex();
+        const tables = await knex.raw("SELECT tablename FROM pg_tables WHERE schemaname = 'public'");
+        console.log('📋 Tables after manual migrations:', tables.rows.map(table => table.tablename));
+
+        res.json({
+            success: true,
+            message: "Manual migrations completed successfully",
+            data: {
+                tables: tables.rows.map(table => table.tablename)
+            }
+        });
+    } catch (error) {
+        console.error("Manual migration error:", error);
+        res.status(500).json({
+            success: false,
+            message: "Manual migration failed",
+            data: {
+                error: error.message,
+                stack: error.stack
+            }
+        });
+    }
+});
+
 // Manual seed endpoint (not protected) - for emergency use
 app.post('/run-seeds', async (req, res) => {
     try {
