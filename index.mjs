@@ -18,14 +18,29 @@ try {
 // Basic middleware
 app.use(express.json());
 
-// Add CORS for frontend access
-app.use(cors(corsOptions));
-
-// Add debugging middleware to log all requests
+// Add CORS for frontend access - Direct configuration
 app.use((req, res, next) => {
     console.log(`🌐 ${req.method} ${req.url} - Origin: ${req.headers.origin || 'none'}`);
+
+    // Set CORS headers for all requests
+    res.header('Access-Control-Allow-Origin', 'https://sweet-booking-frontend.vercel.app');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Max-Age', '86400');
+
+    // Handle preflight requests
+    if (req.method === 'OPTIONS') {
+        console.log('🔄 OPTIONS preflight request handled');
+        res.sendStatus(200);
+        return;
+    }
+
     next();
 });
+
+// Also use the CORS middleware as backup
+app.use(cors(corsOptions));
 
 // Run migrations before starting the server
 const runMigrations = async () => {
@@ -213,20 +228,7 @@ app.get('/cors-test', (req, res) => {
     });
 });
 
-// Handle OPTIONS requests for CORS preflight
-app.options('*', (req, res) => {
-    console.log('OPTIONS request received for:', req.url);
-    console.log('Origin:', req.headers.origin);
-    console.log('Method:', req.headers['access-control-request-method']);
-    console.log('Headers:', req.headers['access-control-request-headers']);
 
-    res.header('Access-Control-Allow-Origin', 'https://sweet-booking-frontend.vercel.app');
-    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
-    res.header('Access-Control-Allow-Credentials', 'true');
-    res.header('Access-Control-Max-Age', '86400');
-    res.sendStatus(200);
-});
 
 // Test database endpoint (not protected)
 app.get('/test-db', async (req, res) => {
