@@ -8,7 +8,7 @@ import { userAuthMiddleware } from "../utils/middlewares/userAuthMiddleware.mjs"
 async function increaseCakeQuantity(cake, quantity) {
 
     const remainingQuantity = cake.total_quantity + quantity;
-    await db('cakes')
+    await (await db())('cakes')
         .where({ id: cake.id })
         .update({ total_quantity: remainingQuantity })
 }
@@ -16,7 +16,7 @@ async function increaseCakeQuantity(cake, quantity) {
 async function decreaseCakeQuantity(cake, quantity) {
 
     const remainingQuantity = cake.total_quantity - quantity;
-    await db('cakes')
+    await (await db())('cakes')
         .where({ id: cake.id })
         .update({ total_quantity: remainingQuantity })
 }
@@ -36,7 +36,7 @@ router.post('/addReservation', userAuthMiddleware, async (req, res) => {
         }
 
 
-        const userRights = await db('user_rights')
+        const userRights = await (await db())('user_rights')
             .join('rights', 'user_rights.right_id', 'rights.id')
             .where('rights.right_code', 2)
             .where('user_rights.user_id', userId)
@@ -46,7 +46,7 @@ router.post('/addReservation', userAuthMiddleware, async (req, res) => {
             return sendJsonResponse(res, false, 403, "Nu sunteti autorizat!", []);
         }
 
-        const cake = await db('cakes')
+        const cake = await (await db())('cakes')
             .where({ 'cakes.id': cake_id })
             .first();
 
@@ -69,13 +69,13 @@ router.post('/addReservation', userAuthMiddleware, async (req, res) => {
         }
 
 
-        await db('cakes')
+        await (await db())('cakes')
             .where({ id: cake_id })
             .update({ total_quantity: remainingQuantity })
 
 
-        const [id] = await db('reservations').insert({ quantity, status: 'placed', cake_id, customer_id: userId });
-        const reservation = await db('reservations').where({ id }).first();
+        const [id] = await (await db())('reservations').insert({ quantity, status: 'placed', cake_id, customer_id: userId });
+        const reservation = await (await db())('reservations').where({ id }).first();
         return sendJsonResponse(res, true, 201, "Rezervarea a fost adăugată cu succes!", { reservation });
     } catch (error) {
         return sendJsonResponse(res, false, 500, "Eroare la adăugarea rezervării!", { details: error.message });
@@ -93,7 +93,7 @@ router.put('/updateReservationStatus/:reservationId', userAuthMiddleware, async 
         const { status } = req.body;
         const userId = req.user?.id;
 
-        const userRights = await db('user_rights')
+        const userRights = await (await db())('user_rights')
             .join('rights', 'user_rights.right_id', 'rights.id')
             .where('rights.right_code', 1)
             .orWhere('rights.right_code', 2)
@@ -103,10 +103,10 @@ router.put('/updateReservationStatus/:reservationId', userAuthMiddleware, async 
         if (!userRights) {
             return sendJsonResponse(res, false, 403, "Nu sunteti autorizat!", []);
         }
-        const cake = await db('cakes').select('*')
+        const cake = await (await db())('cakes').select('*')
             .first();
 
-        const reservation = await db('reservations')
+        const reservation = await (await db())('reservations')
             .where({ id: reservationId }).first();
 
 
@@ -118,10 +118,10 @@ router.put('/updateReservationStatus/:reservationId', userAuthMiddleware, async 
 
 
         if (!reservation) return sendJsonResponse(res, false, 404, "Rezervarea nu există!", []);
-        await db('reservations').where({ id: reservationId }).update({
+        await (await db())('reservations').where({ id: reservationId }).update({
             status: status || reservation.status,
         });
-        const updated = await db('reservations').where({ id: reservationId }).first();
+        const updated = await (await db())('reservations').where({ id: reservationId }).first();
         return sendJsonResponse(res, true, 200, "Rezervarea a fost actualizată cu succes!", { reservation: updated });
     } catch (error) {
         return sendJsonResponse(res, false, 500, "Eroare la actualizarea rezervării!", { details: error.message });
@@ -135,7 +135,7 @@ router.delete('/deleteReservation/:reservationId', userAuthMiddleware, async (re
         const { reservationId } = req.params;
         const userId = req.user?.id;
 
-        const userRights = await db('user_rights')
+        const userRights = await (await db())('user_rights')
             .join('rights', 'user_rights.right_id', 'rights.id')
             .where('rights.right_code', 1)
             .where('user_rights.user_id', userId)
@@ -145,10 +145,10 @@ router.delete('/deleteReservation/:reservationId', userAuthMiddleware, async (re
             return sendJsonResponse(res, false, 403, "Nu sunteti autorizat!", []);
         }
 
-        const reservation = await db('reservations')
+        const reservation = await (await db())('reservations')
             .where({ id: reservationId }).first();
         if (!reservation) return sendJsonResponse(res, false, 404, "Rezervarea nu există!", []);
-        await db('reservations').where({ id: reservationId }).update({ status: 'cancelled' });
+        await (await db())('reservations').where({ id: reservationId }).update({ status: 'cancelled' });
         return sendJsonResponse(res, true, 200, "Rezervarea a fost ștearsă cu succes!", []);
     } catch (error) {
         return sendJsonResponse(res, false, 500, "Eroare la ștergerea prăjiturii!", { details: error.message });
@@ -161,7 +161,7 @@ router.get('/getReservationsByAdminId', userAuthMiddleware, async (req, res) => 
 
         const userId = req.user?.id;
 
-        const userRights = await db('user_rights')
+        const userRights = await (await db())('user_rights')
             .join('rights', 'user_rights.right_id', 'rights.id')
             .where('rights.right_code', 1)
             .where('user_rights.user_id', userId)
@@ -171,7 +171,7 @@ router.get('/getReservationsByAdminId', userAuthMiddleware, async (req, res) => 
             return sendJsonResponse(res, false, 403, "Nu sunteti autorizat!", []);
         }
 
-        const reservations = await db('reservations')
+        const reservations = await (await db())('reservations')
             .join('cakes', 'reservations.cake_id', 'cakes.id')
             .join('users', 'reservations.customer_id', 'users.id')
             .whereNot('reservations.status', 'picked_up')
@@ -203,7 +203,7 @@ router.get('/getReservationsByCustomerId', userAuthMiddleware, async (req, res) 
 
         const userId = req.user?.id;
 
-        const userRights = await db('user_rights')
+        const userRights = await (await db())('user_rights')
             .join('rights', 'user_rights.right_id', 'rights.id')
             .where('rights.right_code', 2)
             .where('user_rights.user_id', userId)
@@ -213,7 +213,7 @@ router.get('/getReservationsByCustomerId', userAuthMiddleware, async (req, res) 
             return sendJsonResponse(res, false, 403, "Nu sunteti autorizat!", []);
         }
 
-        const reservations = await db('reservations')
+        const reservations = await (await db())('reservations')
             .join('cakes', 'reservations.cake_id', 'cakes.id')
             .join('users', 'reservations.customer_id', 'users.id')
             .where('reservations.customer_id', userId)

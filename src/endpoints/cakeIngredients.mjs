@@ -19,7 +19,7 @@ router.post('/addCakeIngredientToCake/:cakeId', userAuthMiddleware, async (req, 
         }
 
 
-        const userRights = await db('user_rights')
+        const userRights = await (await db())('user_rights')
             .join('rights', 'user_rights.right_id', 'rights.id')
             .where('rights.right_code', 1)
             .where('user_rights.user_id', userId)
@@ -29,11 +29,11 @@ router.post('/addCakeIngredientToCake/:cakeId', userAuthMiddleware, async (req, 
             return sendJsonResponse(res, false, 403, "Nu sunteti autorizat!", []);
         }
 
-        const [id] = await db('cake_ingredients').insert({
+        const [id] = await (await db())('cake_ingredients').insert({
             quantity, cake_id: cakeId, ingredient_id, admin_id: userId
         });
 
-        const cakeIngredient = await db('cake_ingredients').where({ id }).first();
+        const cakeIngredient = await (await db())('cake_ingredients').where({ id }).first();
         return sendJsonResponse(res, true, 201, "Ingredientul a fost adăugat cu succes!", { cakeIngredient });
     } catch (error) {
         return sendJsonResponse(res, false, 500, "Eroare la adăugarea ingredientului!", { details: error.message });
@@ -55,7 +55,7 @@ router.put('/updateCakeIngredient/:cakeId', userAuthMiddleware, async (req, res)
 
         const userId = req.user.id;
 
-        const userRights = await db('user_rights')
+        const userRights = await (await db())('user_rights')
             .join('rights', 'user_rights.right_id', 'rights.id')
             .where('rights.right_code', 1)
             .where('user_rights.user_id', userId)
@@ -65,16 +65,16 @@ router.put('/updateCakeIngredient/:cakeId', userAuthMiddleware, async (req, res)
             return sendJsonResponse(res, false, 403, "Nu sunteti autorizat!", []);
         }
 
-        const cakeIngredient = await db('cake_ingredients')
+        const cakeIngredient = await (await db())('cake_ingredients')
             .where({ ingredient_id, cake_id: cakeId }).first();
         if (!cakeIngredient) return sendJsonResponse(res, false, 404, "Ingredientul nu există!", []);
 
-        await db('cake_ingredients').where({ ingredient_id, cake_id: cakeId }).update({
+        await (await db())('cake_ingredients').where({ ingredient_id, cake_id: cakeId }).update({
             quantity: quantity || cakeIngredient.quantity,
             cake_id: cakeId || cakeIngredient.cake_id
         });
 
-        const updated = await db('cake_ingredients').where({ ingredient_id, cake_id: cakeId }).first();
+        const updated = await (await db())('cake_ingredients').where({ ingredient_id, cake_id: cakeId }).first();
         return sendJsonResponse(res, true, 200, "Ingredientul a fost actualizat cu succes!", { cakeIngredient: updated });
     } catch (error) {
         return sendJsonResponse(res, false, 500, "Eroare la actualizarea ingredientului!", { details: error.message });
@@ -96,7 +96,7 @@ router.delete('/deleteCakeIngredient/:cakeId/:ingredientId', userAuthMiddleware,
         }
 
 
-        const userRights = await db('user_rights')
+        const userRights = await (await db())('user_rights')
             .join('rights', 'user_rights.right_id', 'rights.id')
             .where('rights.right_code', 1)
             .where('user_rights.user_id', userId)
@@ -106,9 +106,9 @@ router.delete('/deleteCakeIngredient/:cakeId/:ingredientId', userAuthMiddleware,
             return sendJsonResponse(res, false, 403, "Nu sunteti autorizat!", []);
         }
 
-        const cakeIngredient = await db('cake_ingredients').where({ ingredient_id: ingredientId, cake_id: cakeId }).first();
+        const cakeIngredient = await (await db())('cake_ingredients').where({ ingredient_id: ingredientId, cake_id: cakeId }).first();
         if (!cakeIngredient) return sendJsonResponse(res, false, 404, "Ingredientul nu există!", []);
-        await db('cake_ingredients').where({ ingredient_id: ingredientId, cake_id: cakeId }).del();
+        await (await db())('cake_ingredients').where({ ingredient_id: ingredientId, cake_id: cakeId }).del();
         return sendJsonResponse(res, true, 200, "Ingredientul a fost șters cu succes!", []);
     } catch (error) {
         return sendJsonResponse(res, false, 500, "Eroare la ștergerea ingredientului!", { details: error.message });
@@ -124,7 +124,7 @@ router.get('/getCakeIngredient/:cakeIngredientId', userAuthMiddleware, async (re
 
         const userId = req.user.id;
 
-        const userRights = await db('user_rights')
+        const userRights = await (await db())('user_rights')
             .join('rights', 'user_rights.right_id', 'rights.id')
             .where('rights.right_code', 1)
             .where('user_rights.user_id', userId)
@@ -134,7 +134,7 @@ router.get('/getCakeIngredient/:cakeIngredientId', userAuthMiddleware, async (re
             return sendJsonResponse(res, false, 403, "Nu sunteti autorizat!", []);
         }
 
-        const cakeIngredient = await db('cake_ingredients')
+        const cakeIngredient = await (await db())('cake_ingredients')
             .join('cakes', 'cake_ingredients.cake_id', 'cakes.id')
             .where('cake_ingredients.id', cakeIngredientId)
             .select(
@@ -163,7 +163,7 @@ router.get('/getCakeIngredientsByCakeId', userAuthMiddleware, async (req, res) =
 
         const userId = req.user.id;
 
-        const userRights = await db('user_rights')
+        const userRights = await (await db())('user_rights')
             .join('rights', 'user_rights.right_id', 'rights.id')
             .where('rights.right_code', 1)
             .where('user_rights.user_id', userId)
@@ -173,7 +173,7 @@ router.get('/getCakeIngredientsByCakeId', userAuthMiddleware, async (req, res) =
             return sendJsonResponse(res, false, 403, "Nu sunteti autorizat!", []);
         }
 
-        const cakes = await db('cakes')
+        const cakes = await (await db())('cakes')
             .select(
                 'cakes.id',
                 'cakes.name',
@@ -190,7 +190,7 @@ router.get('/getCakeIngredientsByCakeId', userAuthMiddleware, async (req, res) =
 
         const results = await Promise.all(cakes.map(async cake => {
             // Get order items for this order
-            const ingredients = await db('cake_ingredients')
+            const ingredients = await (await db())('cake_ingredients')
                 .join('ingredients', 'cake_ingredients.ingredient_id', 'ingredients.id')
                 .join('cakes', 'cake_ingredients.cake_id', 'cakes.id')
                 .where('cake_ingredients.cake_id', cake.id)
@@ -226,7 +226,7 @@ router.get('/getIngredientsByCakeId/:cakeId', userAuthMiddleware, async (req, re
 
         const userId = req.user.id;
 
-        const userRights = await db('user_rights')
+        const userRights = await (await db())('user_rights')
             .join('rights', 'user_rights.right_id', 'rights.id')
             .where('rights.right_code', 1)
             .where('user_rights.user_id', userId)
@@ -236,7 +236,7 @@ router.get('/getIngredientsByCakeId/:cakeId', userAuthMiddleware, async (req, re
             return sendJsonResponse(res, false, 403, "Nu sunteti autorizat!", []);
         }
 
-        const ingredients = await db('cake_ingredients')
+        const ingredients = await (await db())('cake_ingredients')
             .join('ingredients', 'cake_ingredients.ingredient_id', 'ingredients.id')
             .where('cake_ingredients.cake_id', cakeId)
             .select(

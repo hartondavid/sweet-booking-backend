@@ -102,7 +102,7 @@ router.post('/register', async (req, res) => {
             return sendJsonResponse(res, false, 400, "Emailul nu este valid", null);
         }
 
-        const phoneExists = await knex('users').where('phone', userData.phone).first();
+        const phoneExists = await (await db())('users').where('phone', userData.phone).first();
         if (phoneExists) {
             return sendJsonResponse(res, false, 400, "Numărul de telefon este deja înregistrat", null);
         }
@@ -182,7 +182,7 @@ router.post('/addUser', userAuthMiddleware, async (req, res) => {
 
         const userId = req.user.id;
 
-        const userRights = await db('user_rights')
+        const userRights = await (await db())('user_rights')
             .join('rights', 'user_rights.right_id', 'rights.id')
             .where('rights.right_code', 1)
             .where('user_rights.user_id', userId)
@@ -235,16 +235,16 @@ router.post('/addUser', userAuthMiddleware, async (req, res) => {
 
         let newUserId;
         // let rightCode;
-        const userEmail = await db('users').where('email', email).first();
+        const userEmail = await (await db())('users').where('email', email).first();
         if (!userEmail) {
             // Insert the new user into the database
-            [newUserId] = await db('users')
+            [newUserId] = await (await db())('users')
                 .insert(userData)
                 .returning('id');
 
-            const rightCode = await db('rights').where('right_code', 1).first();
+            const rightCode = await (await db())('rights').where('right_code', 1).first();
 
-            await db('user_rights')
+            await (await db())('user_rights')
 
                 .where({ user_id: newUserId })
                 .insert({
@@ -270,7 +270,7 @@ router.get('/getUsers', userAuthMiddleware, async (req, res) => {
 
         const userId = req.user.id;
 
-        const userRights = await db('user_rights')
+        const userRights = await (await db())('user_rights')
             .join('rights', 'user_rights.right_id', 'rights.id')
             .where('rights.right_code', 1)
             .where('user_rights.user_id', userId)
@@ -280,8 +280,8 @@ router.get('/getUsers', userAuthMiddleware, async (req, res) => {
             return sendJsonResponse(res, false, 403, "Nu sunteti autorizat!", []);
         }
 
-        const users = await db('users').
-            join('user_rights', 'users.id', 'user_rights.user_id')
+        const users = await (await db())('users')
+            .join('user_rights', 'users.id', 'user_rights.user_id')
             .join('rights', 'user_rights.right_id', 'rights.id')
             .whereNot('users.id', userId)
             .where('rights.right_code', 1)
