@@ -14,11 +14,7 @@ class DatabaseManager {
             if (!this.knex) {
                 console.log('🔌 Connecting to database...');
                 console.log('📊 Database config:', {
-                    host: knexConfig.connection.host,
-                    user: knexConfig.connection.user,
-                    database: knexConfig.connection.database,
-                    port: knexConfig.connection.port,
-                    ssl: knexConfig.connection.ssl
+                    connection: knexConfig.connection
                 });
 
                 this.knex = knex(knexConfig);
