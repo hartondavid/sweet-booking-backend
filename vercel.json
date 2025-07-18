@@ -36,6 +36,10 @@
                     "value": "Content-Type, Authorization, X-Requested-With, Accept, Origin"
                 },
                 {
+                    "key": "Access-Control-Expose-Headers",
+                    "value": "X-Auth-Token, X-Total-Count"
+                },
+                {
                     "key": "Access-Control-Allow-Credentials",
                     "value": "true"
                 },
