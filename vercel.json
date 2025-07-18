@@ -6,10 +6,10 @@
             "use": "@vercel/node"
         }
     ],
-    "routes": [
+    "rewrites": [
         {
-            "src": "/(.*)",
-            "dest": "/index.mjs"
+            "source": "/(.*)",
+            "destination": "/index.mjs"
         }
     ],
     "headers": [
