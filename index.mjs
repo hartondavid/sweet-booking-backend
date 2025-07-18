@@ -244,17 +244,54 @@ app.get('/test-db', async (req, res) => {
         await knex.raw('SELECT 1');
         console.log('✅ Database connection successful');
 
-        // Get all users
-        const users = await knex('users').select('id', 'name', 'email', 'phone');
-        console.log('📋 Found users:', users.length);
+        // Check if migrations table exists
+        console.log('📋 Checking migrations table...');
+        const migrationsTable = await knex.raw("SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename = 'knex_migrations'");
+        const hasMigrationsTable = migrationsTable.rows.length > 0;
+        console.log('📋 Migrations table exists:', hasMigrationsTable);
+
+        // Check current migration status
+        let currentVersion = 'none';
+        let migrationHistory = [];
+        if (hasMigrationsTable) {
+            try {
+                currentVersion = await knex.migrate.currentVersion();
+                migrationHistory = await knex('knex_migrations').select('*').orderBy('id');
+                console.log('📋 Current migration version:', currentVersion);
+                console.log('📋 Migration history:', migrationHistory);
+            } catch (error) {
+                console.log('⚠️ Could not check migration status:', error.message);
+            }
+        }
+
+        // Check all tables
+        const tables = await knex.raw("SELECT tablename FROM pg_tables WHERE schemaname = 'public'");
+        console.log('📋 All tables:', tables.rows.map(table => table.tablename));
+
+        // Try to get users (this will fail if table doesn't exist)
+        let users = [];
+        let usersError = null;
+        try {
+            users = await knex('users').select('id', 'name', 'email', 'phone');
+            console.log('📋 Found users:', users.length);
+        } catch (error) {
+            usersError = error.message;
+            console.log('❌ Users table error:', error.message);
+        }
 
         res.json({
             success: true,
-            message: "Database test successful",
+            message: "Database test completed",
             data: {
                 connection: 'successful',
+                migrationsTableExists: hasMigrationsTable,
+                currentMigrationVersion: currentVersion,
+                migrationHistory: migrationHistory,
+                allTables: tables.rows.map(table => table.tablename),
+                usersTableExists: !usersError,
                 usersCount: users.length,
-                users: users
+                users: users,
+                usersError: usersError
             }
         });
     } catch (error) {
@@ -275,38 +312,119 @@ app.post('/run-migrations', async (req, res) => {
     try {
         console.log('🔄 Manually running migrations...');
 
-        // Run migrations
+        // Get database connection
         const dbInstance = await db();
-        await dbInstance.migrate.latest();
-        console.log('✅ Manual migrations completed successfully');
+        console.log('✅ Database connection established');
+
+        // Check current migration status
+        console.log('📋 Checking current migration status...');
+        const currentVersion = await dbInstance.migrate.currentVersion();
+        console.log('📋 Current migration version:', currentVersion);
+
+        // Check what migrations are available
+        const migrationList = await dbInstance.migrate.list();
+        console.log('📋 Available migrations:', migrationList);
+
+        // Run migrations with detailed logging
+        console.log('🔄 Running migrations...');
+        const [batchNo, log] = await dbInstance.migrate.latest();
+        console.log('📋 Migration batch number:', batchNo);
+        console.log('📋 Migration log:', log);
 
         // Check tables after migrations
         const knex = await db();
         const tables = await knex.raw("SELECT tablename FROM pg_tables WHERE schemaname = 'public'");
         console.log('📋 Tables after manual migrations:', tables.rows.map(table => table.tablename));
 
+        // Verify specific tables exist
+        const hasUsersTable = tables.rows.some(table => table.tablename === 'users');
+        console.log('📋 Users table exists:', hasUsersTable);
+
         res.json({
             success: true,
             message: "Manual migrations completed successfully",
             data: {
-                tables: tables.rows.map(table => table.tablename)
+                batchNumber: batchNo,
+                migrationsRun: log,
+                tables: tables.rows.map(table => table.tablename),
+                usersTableExists: hasUsersTable
             }
         });
     } catch (error) {
         console.error("Manual migration error:", error);
+        console.error("Error stack:", error.stack);
         res.status(500).json({
             success: false,
             message: "Manual migration failed",
             data: {
                 error: error.message,
-                stack: error.stack
+                stack: error.stack,
+                details: "Check server logs for more information"
+            }
+        });
+    }
+});
+
+// GET version of run-migrations for browser access
+app.get('/run-migrations', async (req, res) => {
+    try {
+        console.log('🔄 Manually running migrations via GET...');
+
+        // Get database connection
+        const dbInstance = await db();
+        console.log('✅ Database connection established');
+
+        // Check current migration status
+        console.log('📋 Checking current migration status...');
+        const currentVersion = await dbInstance.migrate.currentVersion();
+        console.log('📋 Current migration version:', currentVersion);
+
+        // Check what migrations are available
+        const migrationList = await dbInstance.migrate.list();
+        console.log('📋 Available migrations:', migrationList);
+
+        // Run migrations with detailed logging
+        console.log('🔄 Running migrations...');
+        const [batchNo, log] = await dbInstance.migrate.latest();
+        console.log('📋 Migration batch number:', batchNo);
+        console.log('📋 Migration log:', log);
+
+        // Check tables after migrations
+        const knex = await db();
+        const tables = await knex.raw("SELECT tablename FROM pg_tables WHERE schemaname = 'public'");
+        console.log('📋 Tables after manual migrations:', tables.rows.map(table => table.tablename));
+
+        // Verify specific tables exist
+        const hasUsersTable = tables.rows.some(table => table.tablename === 'users');
+        console.log('📋 Users table exists:', hasUsersTable);
+
+        res.json({
+            success: true,
+            message: "Manual migrations completed successfully",
+            data: {
+                batchNumber: batchNo,
+                migrationsRun: log,
+                tables: tables.rows.map(table => table.tablename),
+                usersTableExists: hasUsersTable
+            }
+        });
+    } catch (error) {
+        console.error("Manual migration error:", error);
+        console.error("Error stack:", error.stack);
+        res.status(500).json({
+            success: false,
+            message: "Manual migration failed",
+            data: {
+                error: error.message,
+                stack: error.stack,
+                details: "Check server logs for more information"
             }
         });
     }
 });
 
 // Manual seed endpoint (not protected) - for emergency use
-app.post('/run-seeds', async (req, res) => {
+app.get('/run-seeds', async (req, res) => {
     try {
         console.log('🌱 Manually running seeds...');
 
