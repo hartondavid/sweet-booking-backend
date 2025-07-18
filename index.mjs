@@ -169,6 +169,8 @@ if (apiRoutes) {
     console.log('📡 Using simplified API (no database)');
 }
 
+
+
 // Simple test route
 app.get('/test', (req, res) => {
     console.log('Test route accessed');
