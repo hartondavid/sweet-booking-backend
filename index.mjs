@@ -21,6 +21,12 @@ app.use(express.json());
 // Add CORS for frontend access
 app.use(cors(corsOptions));
 
+// Add debugging middleware to log all requests
+app.use((req, res, next) => {
+    console.log(`🌐 ${req.method} ${req.url} - Origin: ${req.headers.origin || 'none'}`);
+    next();
+});
+
 // Run migrations before starting the server
 const runMigrations = async () => {
     try {
@@ -189,6 +195,37 @@ app.get('/health', (req, res) => {
         port: process.env.PORT || 8080,
         database: apiRoutes ? 'connected' : 'not connected (simplified version)'
     });
+});
+
+// CORS test endpoint
+app.get('/cors-test', (req, res) => {
+    console.log('CORS test route accessed');
+    console.log('Request origin:', req.headers.origin);
+    console.log('Request method:', req.method);
+    console.log('Request headers:', req.headers);
+
+    res.json({
+        message: 'CORS test successful',
+        timestamp: new Date().toISOString(),
+        origin: req.headers.origin,
+        method: req.method,
+        corsConfigured: true
+    });
+});
+
+// Handle OPTIONS requests for CORS preflight
+app.options('*', (req, res) => {
+    console.log('OPTIONS request received for:', req.url);
+    console.log('Origin:', req.headers.origin);
+    console.log('Method:', req.headers['access-control-request-method']);
+    console.log('Headers:', req.headers['access-control-request-headers']);
+
+    res.header('Access-Control-Allow-Origin', 'https://sweet-booking-frontend.vercel.app');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Max-Age', '86400');
+    res.sendStatus(200);
 });
 
 // Test database endpoint (not protected)
