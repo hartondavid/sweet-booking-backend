@@ -13,11 +13,17 @@ class DatabaseManager {
         try {
             if (!this.knex) {
                 console.log('🔌 Connecting to database...');
+
+                // Select the correct environment configuration
+                const environment = process.env.NODE_ENV || 'production';
+                const config = knexConfig[environment];
+
                 console.log('📊 Database config:', {
-                    connection: knexConfig.connection
+                    environment,
+                    connection: config.connection
                 });
 
-                this.knex = knex(knexConfig);
+                this.knex = knex(config);
 
                 // Test the connection
                 await this.knex.raw('SELECT 1');

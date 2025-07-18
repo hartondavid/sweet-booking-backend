@@ -24,11 +24,9 @@ module.exports = {
     // Used by Vercel when you deploy
     production: {
         ...baseConfig,
-        connection: {
-            connectionString: process.env.DATABASE_URL,
-            // SSL is required for connecting to Supabase from a cloud environment like Vercel
-            ssl: { rejectUnauthorized: false }
-        },
+        connection: process.env.DATABASE_URL,
+        // SSL is required for connecting to Supabase from a cloud environment like Vercel
+        ssl: { rejectUnauthorized: false },
         // The connection pool is managed by Supabase's PgBouncer, 
         // so we use a minimal pool config on the client-side.
         pool: {
