@@ -4,6 +4,7 @@ import express from "express"
 import dotenv from 'dotenv'
 import cors from 'cors'
 import databaseManager from './src/utils/database.mjs'
+import corsOptions from './middleware.js'
 
 const app = express();
 
@@ -18,12 +19,7 @@ try {
 app.use(express.json());
 
 // Add CORS for frontend access
-app.use(cors({
-    origin: '*', // In production, specify your frontend domain
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-    exposedHeaders: ['X-Auth-Token']
-}));
+app.use(cors(corsOptions));
 
 // Run migrations before starting the server
 const runMigrations = async () => {
