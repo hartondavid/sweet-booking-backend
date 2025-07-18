@@ -3,7 +3,14 @@
     "builds": [
         {
             "src": "index.mjs",
-            "use": "@vercel/node"
+            "use": "@vercel/node",
+            "config": {
+                "includeFiles": [
+                    "migrations/**",
+                    "seeds/**",
+                    "knexfile.cjs"
+                ]
+            }
         }
     ],
     "rewrites": [
@@ -12,15 +19,6 @@
             "destination": "/index.mjs"
         }
     ],
-    "functions": {
-        "index.mjs": {
-            "includeFiles": [
-                "migrations/**",
-                "seeds/**",
-                "knexfile.cjs"
-            ]
-        }
-    },
     "headers": [
         {
             "source": "/(.*)",
