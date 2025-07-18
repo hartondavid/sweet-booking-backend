@@ -3,7 +3,7 @@
 import express from "express"
 import dotenv from 'dotenv'
 import cors from 'cors'
-import { databaseManager } from './src/utils/database.mjs'
+import db from './src/utils/database.mjs'
 import corsOptions from './middleware.js'
 
 const app = express();
@@ -49,7 +49,7 @@ const runMigrations = async () => {
 
         // First, test database connection
         console.log('🔌 Testing database connection...');
-        const knex = await databaseManager.getKnex();
+        const knex = await db();
         console.log('✅ Database connection successful');
 
         // Check if database exists and show tables
@@ -61,7 +61,8 @@ const runMigrations = async () => {
         }
 
         console.log('🔄 Running migrations...');
-        await databaseManager.runMigrations();
+        const dbInstance = await db();
+        await dbInstance.migrate.latest();
         console.log('✅ Migrations completed successfully');
 
         // Check tables after migrations
@@ -74,7 +75,7 @@ const runMigrations = async () => {
 
         // Run seeds after migrations
         console.log('🌱 Running database seeds...');
-        await databaseManager.runSeeds();
+        await dbInstance.seed.run();
         console.log('✅ Seeds completed successfully');
 
         // Check data after seeds
@@ -99,7 +100,7 @@ const runSeeds = async (options = {}) => {
         console.log('🌱 Starting seed execution...');
 
         // Get database connection
-        const knex = await databaseManager.getKnex();
+        const knex = await db();
 
         // Default options
         const seedOptions = {
@@ -239,7 +240,7 @@ app.get('/test-db', async (req, res) => {
         console.log('🔍 Testing database connection...');
 
         // Test database connection
-        const knex = await databaseManager.getKnex();
+        const knex = await db();
         await knex.raw('SELECT 1');
         console.log('✅ Database connection successful');
 
@@ -275,11 +276,12 @@ app.post('/run-migrations', async (req, res) => {
         console.log('🔄 Manually running migrations...');
 
         // Run migrations
-        await databaseManager.runMigrations();
+        const dbInstance = await db();
+        await dbInstance.migrate.latest();
         console.log('✅ Manual migrations completed successfully');
 
         // Check tables after migrations
-        const knex = await databaseManager.getKnex();
+        const knex = await db();
         const tables = await knex.raw("SELECT tablename FROM pg_tables WHERE schemaname = 'public'");
         console.log('📋 Tables after manual migrations:', tables.rows.map(table => table.tablename));
 
@@ -309,11 +311,12 @@ app.post('/run-seeds', async (req, res) => {
         console.log('🌱 Manually running seeds...');
 
         // Run seeds
-        await databaseManager.runSeeds();
+        const dbInstance = await db();
+        await dbInstance.seed.run();
         console.log('✅ Manual seeds completed successfully');
 
         // Get all users after seeding
-        const knex = await databaseManager.getKnex();
+        const knex = await db();
         const users = await knex('users').select('id', 'name', 'email', 'phone');
         console.log('📋 Users after manual seeding:', users);
 
@@ -371,7 +374,7 @@ app.post('/test-token', async (req, res) => {
         console.log('✅ Token verified:', decodedToken);
 
         // Get user from database
-        const knex = await databaseManager.getKnex();
+        const knex = await db();
         const user = await knex('users').where({ id: decodedToken.id }).first();
 
         if (!user) {
@@ -423,7 +426,7 @@ app.post('/login', async (req, res) => {
         console.log('🔍 Login attempt for:', email);
 
         // Get user from database
-        const knex = await databaseManager.getKnex();
+        const knex = await db();
         const user = await knex('users').where({ email }).first();
 
         if (!user) {
@@ -516,6 +519,7 @@ app.use('*', (req, res) => {
             test: '/test',
             health: '/health',
             testDb: '/test-db',
+            runMigrations: '/run-migrations',
             runSeeds: '/run-seeds',
             testToken: '/test-token',
             login: '/login',

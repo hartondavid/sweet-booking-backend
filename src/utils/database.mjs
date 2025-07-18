@@ -136,5 +136,5 @@ process.on('SIGTERM', async () => {
     await databaseManager.disconnect();
     process.exit(0);
 });
-export { databaseManager };
+
 export default db;
