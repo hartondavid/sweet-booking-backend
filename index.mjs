@@ -18,7 +18,7 @@ try {
 // Basic middleware
 app.use(express.json());
 
-// Add CORS for frontend access - Direct configuration
+// Add CORS for frontend access - Direct configuration (Updated for Vercel deployment)
 app.use((req, res, next) => {
     console.log(`🌐 ${req.method} ${req.url} - Origin: ${req.headers.origin || 'none'}`);
 
@@ -220,11 +220,12 @@ app.get('/cors-test', (req, res) => {
     console.log('Request headers:', req.headers);
 
     res.json({
-        message: 'CORS test successful',
+        message: 'CORS test successful - Deployment updated',
         timestamp: new Date().toISOString(),
         origin: req.headers.origin,
         method: req.method,
-        corsConfigured: true
+        corsConfigured: true,
+        deployment: 'latest'
     });
 });
 

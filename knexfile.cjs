@@ -23,7 +23,7 @@ module.exports = {
     // --- Production Environment ---
     // Used by Vercel when you deploy
     production: {
-        ...base - Config,
+        ...baseConfig,
         connection: {
             connectionString: process.env.DATABASE_URL,
             // SSL is required for connecting to Supabase from a cloud environment like Vercel
