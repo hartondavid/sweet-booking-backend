@@ -1,7 +1,7 @@
 // middleware.js - CORS configuration for production deployment
 
 const allowedOrigins = [
-    'https://frontend-app-your-url.vercel.app', // <-- PASTE YOUR LIVE FRONTEND URL HERE
+    'sweet-booking-frontend.vercel.app', // <-- PASTE YOUR LIVE FRONTEND URL HERE
     'http://localhost:3000',
     'http://localhost:3001',
     'http://localhost:5173', // Vite default
