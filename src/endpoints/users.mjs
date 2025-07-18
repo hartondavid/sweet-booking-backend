@@ -114,15 +114,14 @@ router.post('/register', async (req, res) => {
         const userEmail = await (await db())('users').where('email', email).first();
         if (!userEmail) {
             // Insert the new user into the database
-            [newUserId] = await (await db())('users')
+            const [newUser] = await (await db())('users')
                 .insert(userData)
                 .returning('id');
 
+            const newUserId = newUser.id;
             const rightCode = await (await db())('rights').where('right_code', 2).first();
 
             await (await db())('user_rights')
-
-                .where({ user_id: newUserId })
                 .insert({
                     user_id: newUserId,
                     right_id: rightCode.id
@@ -238,15 +237,14 @@ router.post('/addUser', userAuthMiddleware, async (req, res) => {
         const userEmail = await (await db())('users').where('email', email).first();
         if (!userEmail) {
             // Insert the new user into the database
-            [newUserId] = await (await db())('users')
+            const [newUser] = await (await db())('users')
                 .insert(userData)
                 .returning('id');
 
+            newUserId = newUser.id;
             const rightCode = await (await db())('rights').where('right_code', 1).first();
 
             await (await db())('user_rights')
-
-                .where({ user_id: newUserId })
                 .insert({
                     user_id: newUserId,
                     right_id: rightCode.id
