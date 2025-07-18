@@ -12,6 +12,15 @@
             "destination": "/index.mjs"
         }
     ],
+    "functions": {
+        "index.mjs": {
+            "includeFiles": [
+                "migrations/**",
+                "seeds/**",
+                "knexfile.cjs"
+            ]
+        }
+    },
     "headers": [
         {
             "source": "/(.*)",

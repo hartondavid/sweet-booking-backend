@@ -5,6 +5,23 @@ import dotenv from 'dotenv'
 import cors from 'cors'
 import db from './src/utils/database.mjs'
 import corsOptions from './middleware.js'
+import { readdirSync } from 'fs'
+import { join } from 'path'
+
+// Ensure migrations and seeds are included in deployment by referencing them
+try {
+    const migrationsDir = join(process.cwd(), 'migrations')
+    const seedsDir = join(process.cwd(), 'seeds')
+
+    // This will throw an error if directories don't exist, ensuring they're included
+    const migrationFiles = readdirSync(migrationsDir)
+    const seedFiles = readdirSync(seedsDir)
+
+    console.log('📁 Migration files found:', migrationFiles.length)
+    console.log('📁 Seed files found:', seedFiles.length)
+} catch (error) {
+    console.log('⚠️ Could not read migrations/seeds directories:', error.message)
+}
 
 const app = express();
 
