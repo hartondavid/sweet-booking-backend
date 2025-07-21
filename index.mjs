@@ -47,13 +47,14 @@ app.use((req, res, next) => {
 
     if (origin && (
         origin.startsWith('https://sweet-booking-frontend.vercel.app') ||
-        origin.startsWith('http://localhost:')
+        origin.startsWith('http://localhost:') ||
+        origin === 'https://sweet-booking-frontend-kem59jbf1.vercel.app'
     )) {
         console.log('✅ CORS Debug - Setting origin to:', origin);
         res.header('Access-Control-Allow-Origin', origin);
     } else {
         console.log('⚠️ CORS Debug - Using default origin');
-        res.header('Access-Control-Allow-Origin', 'https://sweet-booking-frontend.vercel.app');
+        res.header('Access-Control-Allow-Origin', 'https://sweet-booking-frontend-kem59jbf1.vercel.app');
     }
     res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
     res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
