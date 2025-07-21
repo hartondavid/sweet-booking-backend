@@ -103,8 +103,28 @@ router.post('/addCake', userAuthMiddleware, upload.fields([{ name: 'photo' }]), 
             userId: typeof userId
         });
 
-        const [id] = await dbInstance('cakes').insert(insertData);
+        console.log('🔍 addCake - Attempting database insert...');
+        const insertResult = await dbInstance('cakes').insert(insertData);
+        console.log('🔍 addCake - Insert result:', insertResult);
+
+        // Handle different database return formats
+        let id;
+        if (Array.isArray(insertResult)) {
+            id = insertResult[0];
+        } else if (insertResult && insertResult.length > 0) {
+            id = insertResult[0];
+        } else {
+            // If no ID returned, try to get the last inserted ID
+            const lastInserted = await dbInstance('cakes').orderBy('id', 'desc').first();
+            id = lastInserted ? lastInserted.id : null;
+        }
+
         console.log('🔍 addCake - Insert completed, ID:', id);
+
+        if (!id) {
+            console.log('❌ addCake - No ID returned from insert');
+            return sendJsonResponse(res, false, 500, "Eroare la salvarea prăjiturii - ID invalid!", []);
+        }
 
         console.log('🔍 addCake - Fetching created cake...');
         const cake = await dbInstance('cakes').where({ id }).first();
