@@ -150,10 +150,17 @@ const smartUpload = async (file, folder = 'cakes') => {
 
             const blob = await put(filename, file.buffer, {
                 access: 'public',
+                addRandomSuffix: false,
                 // Optionally specify store ID if you have multiple stores
                 ...(process.env.BLOB_STORE_ID && { storeId: process.env.BLOB_STORE_ID })
             });
             console.log('🔍 smartUpload - Vercel Blob upload successful:', blob.url);
+            console.log('🔍 smartUpload - Blob details:', {
+                url: blob.url,
+                pathname: blob.pathname,
+                size: blob.size,
+                uploadedAt: blob.uploadedAt
+            });
             return blob.url;
         } catch (blobError) {
             console.error('❌ smartUpload - Vercel Blob upload failed:', blobError);

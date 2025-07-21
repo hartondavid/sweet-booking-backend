@@ -3,6 +3,7 @@ import db from "../utils/database.mjs";
 import { sendJsonResponse } from "../utils/utilFunctions.mjs";
 import { userAuthMiddleware } from "../utils/middlewares/userAuthMiddleware.mjs";
 import createMulter, { smartUpload } from "../utils/uploadUtils.mjs";
+import path from 'path';
 
 const upload = createMulter('public/uploads/cakes', ['image/jpeg', 'image/png', 'image/gif', 'application/pdf']);
 
@@ -657,6 +658,28 @@ router.post('/addCakeWithBlob', userAuthMiddleware, upload.fields([{ name: 'phot
         console.error('❌ addCakeWithBlob - Error message:', error.message);
         return sendJsonResponse(res, false, 500, "Eroare la adăugarea prăjiturii cu Vercel Blob!", { details: error.message });
     }
+});
+
+// Serve images with CORS headers
+router.get('/images/:filename', (req, res) => {
+    const { filename } = req.params;
+
+    // Set CORS headers for images
+    res.set({
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET',
+        'Access-Control-Allow-Headers': 'Content-Type',
+        'Cache-Control': 'public, max-age=31536000' // Cache for 1 year
+    });
+
+    // Serve the image from the uploads directory
+    const imagePath = path.join(process.cwd(), 'public', 'uploads', 'cakes', filename);
+    res.sendFile(imagePath, (err) => {
+        if (err) {
+            console.error('Error serving image:', err);
+            res.status(404).json({ error: 'Image not found' });
+        }
+    });
 });
 
 export default router; 
