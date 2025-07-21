@@ -2,7 +2,7 @@ import { Router } from "express";
 import db from "../utils/database.mjs";
 import { sendJsonResponse } from "../utils/utilFunctions.mjs";
 import { userAuthMiddleware } from "../utils/middlewares/userAuthMiddleware.mjs";
-import createMulter from "../utils/uploadUtils.mjs";
+import createMulter, { smartUpload } from "../utils/uploadUtils.mjs";
 
 const upload = createMulter('public/uploads/cakes', ['image/jpeg', 'image/png', 'image/gif', 'application/pdf']);
 
@@ -20,6 +20,14 @@ router.post('/addCake', userAuthMiddleware, upload.fields([{ name: 'photo' }]), 
         const { name, price, description, kcal, grams_per_piece } = req.body;
         const userId = req.user?.id;
 
+        // Detect environment and choose storage method
+        const isProduction = process.env.VERCEL || process.env.NODE_ENV === 'production';
+        console.log('🔍 addCake - Environment detected:', {
+            isProduction,
+            VERCEL: process.env.VERCEL,
+            NODE_ENV: process.env.NODE_ENV
+        });
+
 
         console.log('🔍 addCake - Checking files...');
         if (!req.files || !req.files['photo']) {
@@ -28,9 +36,10 @@ router.post('/addCake', userAuthMiddleware, upload.fields([{ name: 'photo' }]), 
         }
 
         console.log('🔍 addCake - Photo file found:', req.files['photo']);
-        let filePathForImagePath = req.files['photo'][0].path; // Get the full file path
-        filePathForImagePath = filePathForImagePath.replace(/^public[\\/]/, '');
-        console.log('🔍 addCake - File path processed:', filePathForImagePath);
+
+        // Use smart upload function that automatically chooses storage method
+        const photoUrl = await smartUpload(req.files['photo'][0], 'cakes');
+        console.log('🔍 addCake - Photo URL determined:', photoUrl);
 
         console.log('🔍 addCake - Getting database instance...');
         const dbInstance = await db();
@@ -85,7 +94,7 @@ router.post('/addCake', userAuthMiddleware, upload.fields([{ name: 'photo' }]), 
             name,
             price: priceNum,
             description,
-            photo: filePathForImagePath,
+            photo: photoUrl,
             total_quantity: 0,
             kcal: kcalNum,
             admin_id: userId,
@@ -152,6 +161,13 @@ router.put('/updateCake/:cakeId', userAuthMiddleware, upload.fields([{ name: 'ph
             return sendJsonResponse(res, false, 400, "Numele, prețul, descrierea, kcal-ul și cantitatea sunt obligatorii!", []);
         }
 
+        // Detect environment and choose storage method
+        const isProduction = process.env.VERCEL || process.env.NODE_ENV === 'production';
+        console.log('🔍 updateCake - Environment detected:', {
+            isProduction,
+            VERCEL: process.env.VERCEL,
+            NODE_ENV: process.env.NODE_ENV
+        });
 
         const dbInstance = await db();
         const cake = await dbInstance('cakes').where({ id: cakeId }).first();
@@ -171,9 +187,10 @@ router.put('/updateCake/:cakeId', userAuthMiddleware, upload.fields([{ name: 'ph
         }
 
         if (req.files && req.files['photo'] && req.files['photo'][0]) {
-            let filePathForImagePath = req.files['photo'][0].path;
-            filePathForImagePath = filePathForImagePath.replace(/^public[\\/]/, '');
-            updateData.photo = filePathForImagePath;
+            // Use smart upload function that automatically chooses storage method
+            const photoUrl = await smartUpload(req.files['photo'][0], 'cakes');
+            console.log('🔍 updateCake - Photo URL determined:', photoUrl);
+            updateData.photo = photoUrl;
         }
 
         const updated = await dbInstance('cakes').where({ id: cakeId }).update(updateData);
@@ -484,6 +501,161 @@ router.put('/increaseQuantity/:cakeId', userAuthMiddleware, async (req, res) => 
 
     } catch (error) {
         return sendJsonResponse(res, false, 500, 'Eroare la creșterea cantității!', { details: error.message });
+    }
+});
+
+// Upload photo to Vercel Blob (optional alternative)
+router.post('/uploadPhotoToBlob', userAuthMiddleware, async (req, res) => {
+    try {
+        if (!req.files || !req.files['photo']) {
+            return sendJsonResponse(res, false, 400, "No photo file provided", null);
+        }
+
+        const file = req.files['photo'][0];
+        const filename = `cakes/${Date.now()}_${file.originalname}`;
+
+        // Upload to Vercel Blob
+        const { put } = await import('@vercel/blob');
+        const blob = await put(filename, file.buffer, {
+            access: 'public',
+        });
+
+        return sendJsonResponse(res, true, 200, "Photo uploaded to Vercel Blob successfully", {
+            url: blob.url,
+            filename: filename
+        });
+    } catch (error) {
+        console.error('❌ Vercel Blob upload error:', error);
+        return sendJsonResponse(res, false, 500, "Vercel Blob upload failed", { details: error.message });
+    }
+});
+
+// Add cake with Vercel Blob storage (alternative endpoint)
+router.post('/addCakeWithBlob', userAuthMiddleware, upload.fields([{ name: 'photo' }]), async (req, res) => {
+    try {
+        console.log('🔍 addCakeWithBlob - Request received');
+        console.log('🔍 addCakeWithBlob - Request body:', req.body);
+        console.log('🔍 addCakeWithBlob - Request files:', req.files);
+        console.log('🔍 addCakeWithBlob - User ID:', req.user?.id);
+
+        const { name, price, description, kcal, grams_per_piece } = req.body;
+        const userId = req.user?.id;
+
+        console.log('🔍 addCakeWithBlob - Checking files...');
+        if (!req.files || !req.files['photo']) {
+            console.log('❌ addCakeWithBlob - No photo file found');
+            return sendJsonResponse(res, false, 400, "Image is required", null);
+        }
+
+        console.log('🔍 addCakeWithBlob - Photo file found:', req.files['photo']);
+        const file = req.files['photo'][0];
+        const filename = `cakes/${Date.now()}_${file.originalname}`;
+
+        // Upload to Vercel Blob
+        console.log('🔍 addCakeWithBlob - Uploading to Vercel Blob...');
+        const { put } = await import('@vercel/blob');
+        const blob = await put(filename, file.buffer, {
+            access: 'public',
+        });
+
+        console.log('🔍 addCakeWithBlob - Blob URL:', blob.url);
+
+        console.log('🔍 addCakeWithBlob - Getting database instance...');
+        const dbInstance = await db();
+        console.log('🔍 addCakeWithBlob - Database instance obtained');
+
+        console.log('🔍 addCakeWithBlob - Checking user rights...');
+        const userRights = await dbInstance('user_rights')
+            .join('rights', 'user_rights.right_id', 'rights.id')
+            .where('rights.right_code', 1)
+            .where('user_rights.user_id', userId)
+            .first();
+
+        console.log('🔍 addCakeWithBlob - User rights result:', userRights);
+        if (!userRights) {
+            console.log('❌ addCakeWithBlob - User not authorized');
+            return sendJsonResponse(res, false, 403, "Nu sunteti autorizat!", []);
+        }
+
+        console.log('🔍 addCakeWithBlob - Validating required fields...');
+        console.log('🔍 addCakeWithBlob - Fields:', { name, price, description, kcal, grams_per_piece });
+        if (!name || !price || !description || !kcal || !grams_per_piece) {
+            console.log('❌ addCakeWithBlob - Missing required fields');
+            return sendJsonResponse(res, false, 400, "Numele, prețul, descrierea, kcal-ul și cantitatea sunt obligatorii!", []);
+        }
+
+        console.log('🔍 addCakeWithBlob - Checking for existing cake...');
+        const existingCake = await dbInstance('cakes').where({ name }).first();
+        if (existingCake) {
+            console.log('❌ addCakeWithBlob - Cake already exists');
+            return sendJsonResponse(res, false, 400, "Prăjitura există deja!", []);
+        }
+
+        console.log('🔍 addCakeWithBlob - Converting data types...');
+        const priceNum = parseFloat(price);
+        const kcalNum = parseFloat(kcal);
+        const gramsPerPieceNum = parseInt(grams_per_piece);
+
+        console.log('🔍 addCakeWithBlob - Converted values:', { priceNum, kcalNum, gramsPerPieceNum });
+
+        // Validate converted values
+        if (isNaN(priceNum) || isNaN(kcalNum) || isNaN(gramsPerPieceNum)) {
+            console.log('❌ addCakeWithBlob - Invalid numeric values');
+            return sendJsonResponse(res, false, 400, "Valorile numerice nu sunt valide!", []);
+        }
+
+        console.log('🔍 addCakeWithBlob - Converting price per kg...');
+        const price_per_kg = (priceNum * 1000) / gramsPerPieceNum;
+        console.log('🔍 addCakeWithBlob - Price per kg calculated:', price_per_kg);
+
+        console.log('🔍 addCakeWithBlob - Inserting cake into database...');
+        const insertData = {
+            name,
+            price: priceNum,
+            description,
+            photo: blob.url,
+            total_quantity: 0,
+            kcal: kcalNum,
+            admin_id: userId,
+            grams_per_piece: gramsPerPieceNum,
+            price_per_kg
+        };
+        console.log('🔍 addCakeWithBlob - Insert data:', insertData);
+
+        console.log('🔍 addCakeWithBlob - Attempting database insert...');
+        const insertResult = await dbInstance('cakes').insert(insertData);
+        console.log('🔍 addCakeWithBlob - Insert result:', insertResult);
+
+        // Handle different database return formats
+        let id;
+        if (Array.isArray(insertResult)) {
+            id = insertResult[0];
+        } else if (insertResult && insertResult.length > 0) {
+            id = insertResult[0];
+        } else {
+            // If no ID returned, try to get the last inserted ID
+            const lastInserted = await dbInstance('cakes').orderBy('id', 'desc').first();
+            id = lastInserted ? lastInserted.id : null;
+        }
+
+        console.log('🔍 addCakeWithBlob - Insert completed, ID:', id);
+
+        if (!id) {
+            console.log('❌ addCakeWithBlob - No ID returned from insert');
+            return sendJsonResponse(res, false, 500, "Eroare la salvarea prăjiturii - ID invalid!", []);
+        }
+
+        console.log('🔍 addCakeWithBlob - Fetching created cake...');
+        const cake = await dbInstance('cakes').where({ id }).first();
+        console.log('🔍 addCakeWithBlob - Cake fetched:', cake);
+
+        console.log('✅ addCakeWithBlob - Success! Returning response...');
+        return sendJsonResponse(res, true, 201, "Prăjitura a fost adăugată cu succes în Vercel Blob!", { cake });
+    } catch (error) {
+        console.error('❌ addCakeWithBlob - Error occurred:', error);
+        console.error('❌ addCakeWithBlob - Error stack:', error.stack);
+        console.error('❌ addCakeWithBlob - Error message:', error.message);
+        return sendJsonResponse(res, false, 500, "Eroare la adăugarea prăjiturii cu Vercel Blob!", { details: error.message });
     }
 });
 

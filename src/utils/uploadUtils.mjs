@@ -1,6 +1,7 @@
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
+import { put } from '@vercel/blob';
 
 // Function to create multer storage with a dynamic destination
 const createStorage = (uploadPath) => multer.diskStorage({
@@ -61,4 +62,95 @@ const createMulter = (destinationPath, allowedMimeTypes) => {
     });
 };
 
+// Function to upload file to Vercel Blob (optional)
+const uploadToBlob = async (file, filename) => {
+    try {
+        console.log('📤 Uploading to Vercel Blob:', filename);
+
+        const blob = await put(filename, file, {
+            access: 'public',
+        });
+
+        console.log('✅ Upload successful:', blob.url);
+        return blob.url;
+    } catch (error) {
+        console.error('❌ Upload failed:', error);
+        throw error;
+    }
+};
+
+// Function to handle file upload from request (for Vercel Blob)
+const handleFileUpload = async (req, res, next) => {
+    try {
+        if (!req.files || !req.files['photo']) {
+            return res.status(400).json({ error: 'No photo file provided' });
+        }
+
+        const file = req.files['photo'][0];
+        const filename = `cakes/${Date.now()}_${file.originalname}`;
+
+        // Upload to Vercel Blob
+        const imageUrl = await uploadToBlob(file.buffer, filename);
+
+        // Add the URL to the request body
+        req.body.photoUrl = imageUrl;
+
+        next();
+    } catch (error) {
+        console.error('❌ File upload error:', error);
+        return res.status(500).json({ error: 'File upload failed' });
+    }
+};
+
+// Smart upload function that automatically chooses storage method based on environment
+const smartUpload = async (file, folder = 'cakes') => {
+    const isProduction = process.env.VERCEL || process.env.NODE_ENV === 'production';
+    console.log('🔍 smartUpload - Environment detected:', {
+        isProduction,
+        VERCEL: process.env.VERCEL,
+        NODE_ENV: process.env.NODE_ENV
+    });
+
+    if (isProduction) {
+        // Use Vercel Blob in production
+        console.log('🔍 smartUpload - Using Vercel Blob storage (production)');
+        const filename = `${folder}/${Date.now()}_${file.originalname}`;
+
+        try {
+            // Check if we have the required environment variables
+            if (!process.env.BLOB_READ_WRITE_TOKEN) {
+                throw new Error('BLOB_READ_WRITE_TOKEN not configured');
+            }
+
+            console.log('🔍 smartUpload - Blob configuration:', {
+                hasToken: !!process.env.BLOB_READ_WRITE_TOKEN,
+                storeId: process.env.BLOB_STORE_ID || 'not configured'
+            });
+
+            const blob = await put(filename, file.buffer, {
+                access: 'public',
+                // Optionally specify store ID if you have multiple stores
+                ...(process.env.BLOB_STORE_ID && { storeId: process.env.BLOB_STORE_ID })
+            });
+            console.log('🔍 smartUpload - Vercel Blob upload successful:', blob.url);
+            return blob.url;
+        } catch (blobError) {
+            console.error('❌ smartUpload - Vercel Blob upload failed, falling back to local storage:', blobError);
+            // Fallback to local storage if Blob fails
+            let filePathForImagePath = file.path;
+            filePathForImagePath = filePathForImagePath.replace(/^public[\\/]/, '');
+            console.log('🔍 smartUpload - Fallback to local storage:', filePathForImagePath);
+            return filePathForImagePath;
+        }
+    } else {
+        // Use local storage in development
+        console.log('🔍 smartUpload - Using local storage (development)');
+        let filePathForImagePath = file.path;
+        filePathForImagePath = filePathForImagePath.replace(/^public[\\/]/, '');
+        console.log('🔍 smartUpload - Local file path processed:', filePathForImagePath);
+        return filePathForImagePath;
+    }
+};
+
 export default createMulter;
+export { uploadToBlob, handleFileUpload, smartUpload };
