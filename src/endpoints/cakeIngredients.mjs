@@ -19,7 +19,8 @@ router.post('/addCakeIngredientToCake/:cakeId', userAuthMiddleware, async (req, 
         }
 
 
-        const userRights = await (await db())('user_rights')
+        const dbInstance = await db();
+        const userRights = await dbInstance('user_rights')
             .join('rights', 'user_rights.right_id', 'rights.id')
             .where('rights.right_code', 1)
             .where('user_rights.user_id', userId)
@@ -29,11 +30,11 @@ router.post('/addCakeIngredientToCake/:cakeId', userAuthMiddleware, async (req, 
             return sendJsonResponse(res, false, 403, "Nu sunteti autorizat!", []);
         }
 
-        const [id] = await (await db())('cake_ingredients').insert({
+        const [id] = await dbInstance('cake_ingredients').insert({
             quantity, cake_id: cakeId, ingredient_id, admin_id: userId
         });
 
-        const cakeIngredient = await (await db())('cake_ingredients').where({ id }).first();
+        const cakeIngredient = await dbInstance('cake_ingredients').where({ id }).first();
         return sendJsonResponse(res, true, 201, "Ingredientul a fost adăugat cu succes!", { cakeIngredient });
     } catch (error) {
         return sendJsonResponse(res, false, 500, "Eroare la adăugarea ingredientului!", { details: error.message });
@@ -55,7 +56,8 @@ router.put('/updateCakeIngredient/:cakeId', userAuthMiddleware, async (req, res)
 
         const userId = req.user.id;
 
-        const userRights = await (await db())('user_rights')
+        const dbInstance = await db();
+        const userRights = await dbInstance('user_rights')
             .join('rights', 'user_rights.right_id', 'rights.id')
             .where('rights.right_code', 1)
             .where('user_rights.user_id', userId)
@@ -65,16 +67,16 @@ router.put('/updateCakeIngredient/:cakeId', userAuthMiddleware, async (req, res)
             return sendJsonResponse(res, false, 403, "Nu sunteti autorizat!", []);
         }
 
-        const cakeIngredient = await (await db())('cake_ingredients')
+        const cakeIngredient = await dbInstance('cake_ingredients')
             .where({ ingredient_id, cake_id: cakeId }).first();
         if (!cakeIngredient) return sendJsonResponse(res, false, 404, "Ingredientul nu există!", []);
 
-        await (await db())('cake_ingredients').where({ ingredient_id, cake_id: cakeId }).update({
+        await dbInstance('cake_ingredients').where({ ingredient_id, cake_id: cakeId }).update({
             quantity: quantity || cakeIngredient.quantity,
             cake_id: cakeId || cakeIngredient.cake_id
         });
 
-        const updated = await (await db())('cake_ingredients').where({ ingredient_id, cake_id: cakeId }).first();
+        const updated = await dbInstance('cake_ingredients').where({ ingredient_id, cake_id: cakeId }).first();
         return sendJsonResponse(res, true, 200, "Ingredientul a fost actualizat cu succes!", { cakeIngredient: updated });
     } catch (error) {
         return sendJsonResponse(res, false, 500, "Eroare la actualizarea ingredientului!", { details: error.message });

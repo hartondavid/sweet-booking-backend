@@ -16,7 +16,8 @@ router.post('/login', async (req, res) => {
             return sendJsonResponse(res, false, 400, "Email and password are required", []);
         }
         // Fetch user from database
-        const user = await (await db())('users').where({ email }).first();
+        const dbInstance = await db();
+        const user = await dbInstance('users').where({ email }).first();
 
         if (!user) {
             return sendJsonResponse(res, false, 401, "Invalid credentials", []);
@@ -32,7 +33,7 @@ router.post('/login', async (req, res) => {
         // Generate JWT token
         const token = getAuthToken(user.id, user.email, false, '1d', true)
 
-        await (await db())('users')
+        await dbInstance('users')
             .where({ id: user.id })
             .update({ last_login: parseInt(Date.now() / 1000) });
 
@@ -102,7 +103,8 @@ router.post('/register', async (req, res) => {
             return sendJsonResponse(res, false, 400, "Emailul nu este valid", null);
         }
 
-        const phoneExists = await (await db())('users').where('phone', userData.phone).first();
+        const dbInstance = await db();
+        const phoneExists = await dbInstance('users').where('phone', userData.phone).first();
         if (phoneExists) {
             return sendJsonResponse(res, false, 400, "Numărul de telefon este deja înregistrat", null);
         }
@@ -111,17 +113,17 @@ router.post('/register', async (req, res) => {
 
         let newUserId;
         // let rightCode;
-        const userEmail = await (await db())('users').where('email', email).first();
+        const userEmail = await dbInstance('users').where('email', email).first();
         if (!userEmail) {
             // Insert the new user into the database
-            const [newUser] = await (await db())('users')
+            const [newUser] = await dbInstance('users')
                 .insert(userData)
                 .returning('id');
 
             const newUserId = newUser.id;
-            const rightCode = await (await db())('rights').where('right_code', 2).first();
+            const rightCode = await dbInstance('rights').where('right_code', 2).first();
 
-            await (await db())('user_rights')
+            await dbInstance('user_rights')
                 .insert({
                     user_id: newUserId,
                     right_id: rightCode.id
@@ -146,7 +148,8 @@ router.delete('/deleteUser/:userId', userAuthMiddleware, async (req, res) => {
 
         const loggedUserId = req.user.id;
 
-        const userRights = await (await db())('user_rights')
+        const dbInstance = await db();
+        const userRights = await dbInstance('user_rights')
             .join('rights', 'user_rights.right_id', 'rights.id')
             .where('rights.right_code', 1)
             .where('user_rights.user_id', loggedUserId)
@@ -156,9 +159,9 @@ router.delete('/deleteUser/:userId', userAuthMiddleware, async (req, res) => {
             return sendJsonResponse(res, false, 403, "Nu sunteti autorizat!", []);
         }
 
-        const user = await (await db())('users').where({ id: userId }).first();
+        const user = await dbInstance('users').where({ id: userId }).first();
         if (!user) return sendJsonResponse(res, false, 404, "Utilizatorul nu există!", []);
-        await (await db())('users').where({ id: userId }).del();
+        await dbInstance('users').where({ id: userId }).del();
         return sendJsonResponse(res, true, 200, "Utilizatorul a fost șters cu succes!", []);
     } catch (error) {
         return sendJsonResponse(res, false, 500, "Eroare la ștergerea ingredientului!", { details: error.message });
@@ -181,7 +184,8 @@ router.post('/addUser', userAuthMiddleware, async (req, res) => {
 
         const userId = req.user.id;
 
-        const userRights = await (await db())('user_rights')
+        const dbInstance = await db();
+        const userRights = await dbInstance('user_rights')
             .join('rights', 'user_rights.right_id', 'rights.id')
             .where('rights.right_code', 1)
             .where('user_rights.user_id', userId)
@@ -234,17 +238,17 @@ router.post('/addUser', userAuthMiddleware, async (req, res) => {
 
         let newUserId;
         // let rightCode;
-        const userEmail = await (await db())('users').where('email', email).first();
+        const userEmail = await dbInstance('users').where('email', email).first();
         if (!userEmail) {
             // Insert the new user into the database
-            const [newUser] = await (await db())('users')
+            const [newUser] = await dbInstance('users')
                 .insert(userData)
                 .returning('id');
 
             newUserId = newUser.id;
-            const rightCode = await (await db())('rights').where('right_code', 1).first();
+            const rightCode = await dbInstance('rights').where('right_code', 1).first();
 
-            await (await db())('user_rights')
+            await dbInstance('user_rights')
                 .insert({
                     user_id: newUserId,
                     right_id: rightCode.id
@@ -268,7 +272,8 @@ router.get('/getUsers', userAuthMiddleware, async (req, res) => {
 
         const userId = req.user.id;
 
-        const userRights = await (await db())('user_rights')
+        const dbInstance = await db();
+        const userRights = await dbInstance('user_rights')
             .join('rights', 'user_rights.right_id', 'rights.id')
             .where('rights.right_code', 1)
             .where('user_rights.user_id', userId)
@@ -278,7 +283,7 @@ router.get('/getUsers', userAuthMiddleware, async (req, res) => {
             return sendJsonResponse(res, false, 403, "Nu sunteti autorizat!", []);
         }
 
-        const users = await (await db())('users')
+        const users = await dbInstance('users')
             .join('user_rights', 'users.id', 'user_rights.user_id')
             .join('rights', 'user_rights.right_id', 'rights.id')
             .whereNot('users.id', userId)
