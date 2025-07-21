@@ -39,8 +39,16 @@ app.use(express.json());
 app.use((req, res, next) => {
     console.log(`🌐 ${req.method} ${req.url} - Origin: ${req.headers.origin || 'none'}`);
 
-    // Set CORS headers for all requests
-    res.header('Access-Control-Allow-Origin', 'https://sweet-booking-frontend.vercel.app');
+    // Set CORS headers for all requests - allow frontend domain and subdomains
+    const origin = req.headers.origin;
+    if (origin && (
+        origin.startsWith('https://sweet-booking-frontend.vercel.app') ||
+        origin.startsWith('http://localhost:')
+    )) {
+        res.header('Access-Control-Allow-Origin', origin);
+    } else {
+        res.header('Access-Control-Allow-Origin', 'https://sweet-booking-frontend.vercel.app');
+    }
     res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
     res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
     res.header('Access-Control-Expose-Headers', 'X-Auth-Token, X-Total-Count');

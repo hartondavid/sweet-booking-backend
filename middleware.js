@@ -1,12 +1,28 @@
 // middleware.js - CORS configuration for production deployment
 
 const allowedOrigins = [
-    'https://sweet-booking-frontend.vercel.app', // <-- PASTE YOUR LIVE FRONTEND URL HERE
+    'https://sweet-booking-frontend.vercel.app',
     'http://localhost:3000',
     'http://localhost:3001',
     'http://localhost:5173', // Vite default
     'http://localhost:8080'  // Your backend local port
 ];
+
+// Function to check if origin is allowed (including subdomains)
+const isOriginAllowed = (origin) => {
+    // Allow localhost origins
+    if (origin.startsWith('http://localhost:')) {
+        return true;
+    }
+
+    // Allow main frontend domain and all its subdomains
+    if (origin.startsWith('https://sweet-booking-frontend.vercel.app')) {
+        return true;
+    }
+
+    // Check exact matches
+    return allowedOrigins.includes(origin);
+};
 
 const corsOptions = {
     origin: function (origin, callback) {
@@ -19,7 +35,7 @@ const corsOptions = {
             return callback(null, true);
         }
 
-        if (allowedOrigins.indexOf(origin) !== -1) {
+        if (isOriginAllowed(origin)) {
             console.log('Origin allowed:', origin);
             callback(null, true);
         } else {
