@@ -53,8 +53,15 @@ const createMulter = (destinationPath, allowedMimeTypes) => {
         allowedMimeTypes
     });
 
+    // Use memory storage for Vercel Blob, disk storage for local development
+    const isProduction = process.env.VERCEL || process.env.NODE_ENV === 'production';
+
+    const storage = isProduction
+        ? multer.memoryStorage() // For Vercel Blob - keeps file in memory
+        : createStorage(destinationPath); // For local development - saves to disk
+
     return multer({
-        storage: createStorage(destinationPath),
+        storage: storage,
         fileFilter: createFileFilter(allowedMimeTypes),
         limits: {
             fileSize: 5 * 1024 * 1024 // 5MB limit
@@ -124,8 +131,22 @@ const smartUpload = async (file, folder = 'cakes') => {
 
             console.log('🔍 smartUpload - Blob configuration:', {
                 hasToken: !!process.env.BLOB_READ_WRITE_TOKEN,
+                tokenPrefix: process.env.BLOB_READ_WRITE_TOKEN?.substring(0, 20) + '...',
                 storeId: process.env.BLOB_STORE_ID || 'not configured'
             });
+
+            console.log('🔍 smartUpload - File info:', {
+                originalname: file.originalname,
+                size: file.size,
+                mimetype: file.mimetype,
+                hasBuffer: !!file.buffer,
+                hasPath: !!file.path
+            });
+
+            // In production, file should be in memory (buffer)
+            if (!file.buffer) {
+                throw new Error('File buffer not available for Vercel Blob upload');
+            }
 
             const blob = await put(filename, file.buffer, {
                 access: 'public',
@@ -135,16 +156,15 @@ const smartUpload = async (file, folder = 'cakes') => {
             console.log('🔍 smartUpload - Vercel Blob upload successful:', blob.url);
             return blob.url;
         } catch (blobError) {
-            console.error('❌ smartUpload - Vercel Blob upload failed, falling back to local storage:', blobError);
-            // Fallback to local storage if Blob fails
-            let filePathForImagePath = file.path;
-            filePathForImagePath = filePathForImagePath.replace(/^public[\\/]/, '');
-            console.log('🔍 smartUpload - Fallback to local storage:', filePathForImagePath);
-            return filePathForImagePath;
+            console.error('❌ smartUpload - Vercel Blob upload failed:', blobError);
+            throw blobError; // Don't fallback in production, just fail
         }
     } else {
         // Use local storage in development
         console.log('🔍 smartUpload - Using local storage (development)');
+        if (!file.path) {
+            throw new Error('File path not available for local storage');
+        }
         let filePathForImagePath = file.path;
         filePathForImagePath = filePathForImagePath.replace(/^public[\\/]/, '');
         console.log('🔍 smartUpload - Local file path processed:', filePathForImagePath);
