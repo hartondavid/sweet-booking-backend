@@ -17,7 +17,7 @@ const isOriginAllowed = (origin) => {
     }
 
     // Allow main frontend domain and all its subdomains
-    if (origin.startsWith('https://sweet-booking-frontend.vercel.app')) {
+    if (origin.startsWith('https://sweetbooking.davidharton.online')) {
         return true;
     }
 
