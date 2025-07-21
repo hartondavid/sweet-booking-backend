@@ -2,6 +2,7 @@
 
 const allowedOrigins = [
     'https://sweetbooking.davidharton.online',
+    'https://sweet-booking-frontend.vercel.app',
     'https://sweet-booking-frontend-8hjfby3kc.vercel.app', // Current frontend URL
     'http://localhost:3000',
     'http://localhost:3001',
@@ -17,7 +18,8 @@ const isOriginAllowed = (origin) => {
     }
 
     // Allow main frontend domain and all its subdomains
-    if (origin.startsWith('https://sweetbooking.davidharton.online')) {
+    if (origin.startsWith('https://sweetbooking.davidharton.online') ||
+        origin.startsWith('https://sweet-booking-frontend.vercel.app')) {
         return true;
     }
 
