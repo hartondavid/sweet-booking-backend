@@ -41,12 +41,18 @@ app.use((req, res, next) => {
 
     // Set CORS headers for all requests - allow frontend domain and subdomains
     const origin = req.headers.origin;
+    console.log('🔍 CORS Debug - Origin:', origin);
+    console.log('🔍 CORS Debug - Starts with sweet-booking-frontend:', origin?.startsWith('https://sweet-booking-frontend.vercel.app'));
+    console.log('🔍 CORS Debug - Starts with localhost:', origin?.startsWith('http://localhost:'));
+
     if (origin && (
         origin.startsWith('https://sweet-booking-frontend.vercel.app') ||
         origin.startsWith('http://localhost:')
     )) {
+        console.log('✅ CORS Debug - Setting origin to:', origin);
         res.header('Access-Control-Allow-Origin', origin);
     } else {
+        console.log('⚠️ CORS Debug - Using default origin');
         res.header('Access-Control-Allow-Origin', 'https://sweet-booking-frontend.vercel.app');
     }
     res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
@@ -65,8 +71,8 @@ app.use((req, res, next) => {
     next();
 });
 
-// Also use the CORS middleware as backup
-app.use(cors(corsOptions));
+// CORS is already handled by the custom middleware above
+// app.use(cors(corsOptions)); // Commented out to avoid conflicts
 
 // Run migrations before starting the server
 const runMigrations = async () => {
@@ -249,12 +255,13 @@ app.get('/cors-test', (req, res) => {
     console.log('Request headers:', req.headers);
 
     res.json({
-        message: 'CORS test successful - Deployment updated',
+        message: 'CORS test successful - Updated with subdomain support',
         timestamp: new Date().toISOString(),
         origin: req.headers.origin,
         method: req.method,
         corsConfigured: true,
-        deployment: 'latest'
+        deployment: 'latest',
+        subdomainSupport: true
     });
 });
 
