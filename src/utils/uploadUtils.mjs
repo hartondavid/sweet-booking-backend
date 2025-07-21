@@ -1,7 +1,7 @@
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
-import { put } from '@vercel/blob';
+import { put, del } from '@vercel/blob';
 
 // Function to create multer storage with a dynamic destination
 const createStorage = (uploadPath) => multer.diskStorage({
@@ -179,5 +179,24 @@ const smartUpload = async (file, folder = 'cakes') => {
     }
 };
 
+// Function to delete file from Vercel Blob
+const deleteFromBlob = async (url) => {
+    try {
+        console.log('🗑️ Deleting from Vercel Blob:', url);
+
+        if (!url || !url.includes('blob.vercel-storage.com')) {
+            console.log('⚠️ Not a Vercel Blob URL, skipping deletion');
+            return false;
+        }
+
+        await del(url);
+        console.log('✅ File deleted from Vercel Blob successfully');
+        return true;
+    } catch (error) {
+        console.error('❌ Failed to delete from Vercel Blob:', error);
+        return false;
+    }
+};
+
 export default createMulter;
-export { uploadToBlob, handleFileUpload, smartUpload };
+export { uploadToBlob, handleFileUpload, smartUpload, deleteFromBlob };
