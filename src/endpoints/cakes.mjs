@@ -12,51 +12,110 @@ const router = Router();
 router.post('/addCake', userAuthMiddleware, upload.fields([{ name: 'photo' }]), async (req, res) => {
 
     try {
+        console.log('🔍 addCake - Request received');
+        console.log('🔍 addCake - Request body:', req.body);
+        console.log('🔍 addCake - Request files:', req.files);
+        console.log('🔍 addCake - User ID:', req.user?.id);
 
         const { name, price, description, kcal, grams_per_piece } = req.body;
         const userId = req.user?.id;
 
 
+        console.log('🔍 addCake - Checking files...');
         if (!req.files || !req.files['photo']) {
+            console.log('❌ addCake - No photo file found');
             return sendJsonResponse(res, false, 400, "Image is required", null);
         }
 
+        console.log('🔍 addCake - Photo file found:', req.files['photo']);
         let filePathForImagePath = req.files['photo'][0].path; // Get the full file path
         filePathForImagePath = filePathForImagePath.replace(/^public[\\/]/, '');
+        console.log('🔍 addCake - File path processed:', filePathForImagePath);
 
+        console.log('🔍 addCake - Getting database instance...');
         const dbInstance = await db();
+        console.log('🔍 addCake - Database instance obtained');
+
+        console.log('🔍 addCake - Checking user rights...');
         const userRights = await dbInstance('user_rights')
             .join('rights', 'user_rights.right_id', 'rights.id')
             .where('rights.right_code', 1)
             .where('user_rights.user_id', userId)
             .first();
 
+        console.log('🔍 addCake - User rights result:', userRights);
         if (!userRights) {
+            console.log('❌ addCake - User not authorized');
             return sendJsonResponse(res, false, 403, "Nu sunteti autorizat!", []);
         }
 
+        console.log('🔍 addCake - Validating required fields...');
+        console.log('🔍 addCake - Fields:', { name, price, description, kcal, grams_per_piece });
         if (!name || !price || !description || !kcal || !grams_per_piece) {
+            console.log('❌ addCake - Missing required fields');
             return sendJsonResponse(res, false, 400, "Numele, prețul, descrierea, kcal-ul și cantitatea sunt obligatorii!", []);
         }
 
+        console.log('🔍 addCake - Checking for existing cake...');
         const existingCake = await dbInstance('cakes').where({ name }).first();
         if (existingCake) {
+            console.log('❌ addCake - Cake already exists');
             return sendJsonResponse(res, false, 400, "Prăjitura există deja!", []);
         }
 
+        console.log('🔍 addCake - Converting data types...');
+        const priceNum = parseFloat(price);
+        const kcalNum = parseFloat(kcal);
+        const gramsPerPieceNum = parseInt(grams_per_piece);
 
-        const price_per_kg = (price * 1000) / grams_per_piece;
+        console.log('🔍 addCake - Converted values:', { priceNum, kcalNum, gramsPerPieceNum });
 
-        const [id] = await dbInstance('cakes').insert({
-            name, price, description, photo: filePathForImagePath, total_quantity: 0,
-            kcal, admin_id: userId, grams_per_piece, price_per_kg
+        // Validate converted values
+        if (isNaN(priceNum) || isNaN(kcalNum) || isNaN(gramsPerPieceNum)) {
+            console.log('❌ addCake - Invalid numeric values');
+            return sendJsonResponse(res, false, 400, "Valorile numerice nu sunt valide!", []);
+        }
+
+        console.log('🔍 addCake - Converting price per kg...');
+        const price_per_kg = (priceNum * 1000) / gramsPerPieceNum;
+        console.log('🔍 addCake - Price per kg calculated:', price_per_kg);
+
+        console.log('🔍 addCake - Inserting cake into database...');
+        const insertData = {
+            name,
+            price: priceNum,
+            description,
+            photo: filePathForImagePath,
+            total_quantity: 0,
+            kcal: kcalNum,
+            admin_id: userId,
+            grams_per_piece: gramsPerPieceNum,
+            price_per_kg
+        };
+        console.log('🔍 addCake - Insert data:', insertData);
+        console.log('🔍 addCake - Data types:', {
+            name: typeof name,
+            price: typeof price,
+            description: typeof description,
+            kcal: typeof kcal,
+            grams_per_piece: typeof grams_per_piece,
+            price_per_kg: typeof price_per_kg,
+            userId: typeof userId
         });
 
+        const [id] = await dbInstance('cakes').insert(insertData);
+        console.log('🔍 addCake - Insert completed, ID:', id);
 
-
+        console.log('🔍 addCake - Fetching created cake...');
         const cake = await dbInstance('cakes').where({ id }).first();
+        console.log('🔍 addCake - Cake fetched:', cake);
+
+        console.log('✅ addCake - Success! Returning response...');
         return sendJsonResponse(res, true, 201, "Prăjitura a fost adăugată cu succes!", { cake });
     } catch (error) {
+        console.error('❌ addCake - Error occurred:', error);
+        console.error('❌ addCake - Error stack:', error.stack);
+        console.error('❌ addCake - Error message:', error.message);
         return sendJsonResponse(res, false, 500, "Eroare la adăugarea prăjiturii!", { details: error.message });
     }
 });
